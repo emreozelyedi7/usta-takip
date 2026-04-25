@@ -23,7 +23,6 @@ export default function Home() {
   const aylar = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
   const yillar = [2025, 2026, 2027];
 
-  // Tüm form alanları tanımlandı
   const [yeniIs, setYeniIs] = useState({ 
     musteri: "", 
     isModeli: "Cam Balkon", 
@@ -63,14 +62,23 @@ export default function Home() {
   const isKaydet = async (e: React.FormEvent) => {
     e.preventDefault();
     const formatliTarih = `${seciliYil}-${String(seciliAy + 1).padStart(2, '0')}-${String(seciliGun).padStart(2, '0')}`;
+    
+    // VERİTABANI SÜTUN İSİMLERİYLE TAM UYUMLU HALE GETİRİLDİ
     const { error } = await supabase.from('teklifler').insert([{ 
-        ...yeniIs, 
+        musteri: yeniIs.musteri,
+        is_modeli: yeniIs.isModeli, // db ismi is_modeli
+        ilce: yeniIs.ilce,
+        fiyat: yeniIs.fiyat + " ₺",
+        kaynak: yeniIs.kaynak,
+        aciklama: yeniIs.aciklama,
         is_tarihi: formatliTarih, 
-        fiyat: yeniIs.fiyat + " ₺", 
         durum: 'beklemede', 
         uretim: { cizim: false, camSiparisi: false, profil: false, camGeldi: false, atolye: false, teslim: false } 
     }]);
-    if (!error) { 
+
+    if (error) {
+        alert("Hata oluştu: " + error.message);
+    } else { 
         verileriGetir(); 
         setIsModalOpen(false); 
         setYeniIs({ musteri: "", isModeli: "Cam Balkon", ilce: "", fiyat: "", kaynak: "Instagram", aciklama: "" }); 
@@ -94,7 +102,7 @@ export default function Home() {
   return (
     <div className="max-w-xl mx-auto bg-slate-50 min-h-screen text-slate-900 overflow-x-hidden flex flex-col pb-32">
       
-      {/* ÜST PANEL - LOGO VE TARİH GERİ GELDİ */}
+      {/* ÜST PANEL */}
       <div className="bg-white px-6 pt-12 pb-6 border-b border-slate-100 shadow-sm sticky top-0 z-40">
         <p className="text-[10px] text-blue-600 font-bold uppercase tracking-[0.3em] mb-1 text-center">USTA CAM BALKON</p>
         <div className="flex justify-between items-center mb-6">
@@ -104,7 +112,6 @@ export default function Home() {
         
         {aktifSekme === 'teklifler' && (
           <div className="space-y-4">
-            {/* YIL VE AY SEÇİMİ GERİ GELDİ */}
             <div className="flex gap-2">
               <select value={seciliYil} onChange={(e) => setSeciliYil(Number(e.target.value))} className="flex-1 bg-slate-50 rounded-xl px-3 py-3 text-xs font-bold outline-none border-none">
                 {yillar.map(y => <option key={y} value={y}>{y}</option>)}
@@ -113,7 +120,6 @@ export default function Home() {
                 {aylar.map((a, i) => <option key={a} value={i}>{a}</option>)}
               </select>
             </div>
-            {/* GÜN SEÇİCİ */}
             <div className="flex overflow-x-auto gap-2 pb-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
               {Array.from({ length: new Date(seciliYil, seciliAy + 1, 0).getDate() }, (_, i) => i + 1).map(gun => (
                 <button key={gun} onClick={() => setSeciliGun(gun)} className={`flex-shrink-0 w-10 h-12 rounded-xl flex flex-col items-center justify-center transition-all ${seciliGun === gun ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-50 text-slate-400'}`}>
@@ -128,7 +134,7 @@ export default function Home() {
       {/* LİSTE ALANI */}
       <div className="p-4 space-y-4 flex-1">
         {yukleniyor ? (
-            <div className="text-center py-10 text-[10px] font-black uppercase text-slate-300">Yükleniyor...</div>
+            <div className="text-center py-10 text-[10px] font-black uppercase text-slate-300 tracking-widest">Veriler Yükleniyor...</div>
         ) : teklifler.length === 0 ? (
             <div className="text-center py-20 bg-white rounded-[2.5rem] border border-slate-100 text-[10px] font-black uppercase text-slate-300 tracking-widest">Kayıt Bulunmuyor</div>
         ) : (
@@ -148,7 +154,7 @@ export default function Home() {
                         {aktifSekme === 'uretim' ? (
                           <div className="mt-4 space-y-2">
                             <div className="flex justify-between text-[10px] font-black uppercase text-blue-600">
-                                <span>İşlem Durumu</span>
+                                <span>Üretim Durumu</span>
                                 <span>%{yuzde}</span>
                             </div>
                             <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
@@ -182,7 +188,7 @@ export default function Home() {
                 </div>
                 <button onClick={() => setSelectedJob(null)} className="text-slate-300 text-xl font-bold">✕</button>
             </div>
-            <div className="grid grid-cols-2 gap-3 mb-8 text-center">
+            <div className="grid grid-cols-2 gap-3 mb-8">
               {[
                 { key: 'cizim', label: 'Çizim' },
                 { key: 'camSiparisi', label: 'Cam Sip.' },
@@ -197,12 +203,12 @@ export default function Home() {
                 </button>
               ))}
             </div>
-            <button onClick={() => setSelectedJob(null)} className="w-full bg-slate-900 text-white p-5 rounded-2xl font-black text-xs uppercase tracking-widest">Kapat</button>
+            <button onClick={() => setSelectedJob(null)} className="w-full bg-slate-900 text-white p-5 rounded-2xl font-black text-xs uppercase tracking-widest">KAPAT</button>
           </div>
         </div>
       )}
 
-      {/* ALT MENÜ */}
+      {/* ALT NAVİGASYON */}
       <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-slate-100 px-12 py-6 flex justify-around items-center z-50 rounded-t-[2.5rem] shadow-2xl">
         <button onClick={() => setAktifSekme('teklifler')} className={`flex flex-col items-center gap-1.5 transition-all ${aktifSekme === 'teklifler' ? 'text-blue-600 scale-110' : 'text-slate-300'}`}>
             <span className="text-[10px] font-black uppercase tracking-widest">TEKLİFLER</span>
@@ -214,7 +220,7 @@ export default function Home() {
         </button>
       </div>
 
-      {/* YENİ KAYIT MODALI - TÜM ALANLAR GERİ GELDİ */}
+      {/* YENİ KAYIT MODALI */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-6 overflow-y-auto">
           <div className="bg-white w-full max-w-sm p-8 rounded-[3rem] shadow-2xl my-auto">
@@ -223,14 +229,15 @@ export default function Home() {
               <input required className="w-full bg-slate-50 p-4 rounded-2xl text-sm font-bold outline-none border border-transparent focus:border-blue-500 transition-all" placeholder="Müşteri Adı" onChange={(e) => setYeniIs({...yeniIs, musteri: e.target.value})} />
               
               <div className="grid grid-cols-2 gap-2">
-                <select className="bg-slate-50 p-4 rounded-2xl text-[10px] font-bold outline-none border-none" onChange={(e) => setYeniIs({...yeniIs, isModeli: e.target.value})}>
+                <select value={yeniIs.isModeli} className="bg-slate-50 p-4 rounded-2xl text-[10px] font-bold outline-none border-none" onChange={(e) => setYeniIs({...yeniIs, isModeli: e.target.value})}>
                     <option value="Cam Balkon">Cam Balkon</option>
                     <option value="Giyotin">Giyotin</option>
                     <option value="Sürme">Sürme</option>
                     <option value="Teras Kapama">Teras</option>
                     <option value="Bioklimatik">Bioklimatik</option>
+                    <option value="Pergole">Pergole</option>
                 </select>
-                <select className="bg-slate-50 p-4 rounded-2xl text-[10px] font-bold outline-none border-none" onChange={(e) => setYeniIs({...yeniIs, kaynak: e.target.value})}>
+                <select value={yeniIs.kaynak} className="bg-slate-50 p-4 rounded-2xl text-[10px] font-bold outline-none border-none" onChange={(e) => setYeniIs({...yeniIs, kaynak: e.target.value})}>
                     <option value="Instagram">Instagram</option>
                     <option value="Referans">Referans</option>
                     <option value="Web Sitesi">Web Sitesi</option>
