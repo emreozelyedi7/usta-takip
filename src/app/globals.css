@@ -1,0 +1,8 @@
+@import "tailwindcss";
+
+/* Mobilde kazara geri gitmeyi ve yatay kaymayı engellemek için */
+body {
+  overscroll-behavior-y: none;
+  overscroll-behavior-x: none;
+  touch-action: pan-y; 
+}
