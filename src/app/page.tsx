@@ -13,7 +13,7 @@ export default function Home() {
   const [yukleniyor, setYukleniyor] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [aktifSekme, setAktifSekme] = useState('teklifler'); // 'teklifler' veya 'imalat'
+  const [aktifSekme, setAktifSekme] = useState('teklifler'); 
   const [selectedJob, setSelectedJob] = useState<any>(null);
   
   const simdi = new Date();
@@ -33,15 +33,12 @@ export default function Home() {
   const verileriGetir = async () => {
     setYukleniyor(true);
     const formatliTarih = `${seciliYil}-${String(seciliAy + 1).padStart(2, '0')}-${String(seciliGun).padStart(2, '0')}`;
-    
     let query = supabase.from('teklifler').select('*');
-    
     if (aktifSekme === 'teklifler') {
       query = query.eq('is_tarihi', formatliTarih);
     } else {
       query = query.eq('durum', 'onaylandi');
     }
-
     const { data } = await query.order('created_at', { ascending: false });
     if (data) setTeklifler(data);
     setYukleniyor(false);
@@ -78,166 +75,123 @@ export default function Home() {
   return (
     <div className="max-w-xl mx-auto bg-slate-50 min-h-screen antialiased text-slate-900 overflow-x-hidden relative">
       
-      {/* SOL AÇILIR MENÜ (SIDEBAR) */}
-      <div className={`fixed inset-y-0 left-0 w-64 bg-slate-900 z-[110] transform ${isMenuOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out shadow-2xl`}>
+      {/* SIDEBAR */}
+      <div className={`fixed inset-y-0 left-0 w-64 bg-slate-900 z-[110] transform ${isMenuOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 shadow-2xl`}>
         <div className="p-8">
-          <h2 className="text-white font-black text-xl tracking-tighter mb-10">MENÜ</h2>
-          <nav className="space-y-6">
-            <button onClick={() => { setAktifSekme('teklifler'); setIsMenuOpen(false); }} className={`flex items-center gap-3 w-full text-left font-bold text-sm uppercase tracking-widest ${aktifSekme === 'teklifler' ? 'text-blue-400' : 'text-slate-400'}`}>
-              <span className="text-xl">📋</span> Teklif Arşivi
-            </button>
-            <button onClick={() => { setAktifSekme('imalat'); setIsMenuOpen(false); }} className={`flex items-center gap-3 w-full text-left font-bold text-sm uppercase tracking-widest ${aktifSekme === 'imalat' ? 'text-blue-400' : 'text-slate-400'}`}>
-              <span className="text-xl">🏗️</span> İmalat Takip
-            </button>
+          <h2 className="text-white font-black text-xl mb-10 tracking-tighter">USTA TAKİP</h2>
+          <nav className="space-y-4">
+            <button onClick={() => { setAktifSekme('teklifler'); setIsMenuOpen(false); }} className={`w-full p-4 rounded-xl text-left font-bold text-xs uppercase tracking-widest transition-colors ${aktifSekme === 'teklifler' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'}`}>📋 Teklif Havuzu</button>
+            <button onClick={() => { setAktifSekme('imalat'); setIsMenuOpen(false); }} className={`w-full p-4 rounded-xl text-left font-bold text-xs uppercase tracking-widest transition-colors ${aktifSekme === 'imalat' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'}`}>🏗️ İmalat Takip</button>
           </nav>
         </div>
-        <button onClick={() => setIsMenuOpen(false)} className="absolute bottom-10 left-8 text-slate-500 font-bold text-xs uppercase">Kapat</button>
       </div>
+      {isMenuOpen && <div onClick={() => setIsMenuOpen(false)} className="fixed inset-0 bg-black/60 z-[105] backdrop-blur-sm"></div>}
 
-      {/* KARARTMA ARKA PLAN */}
-      {isMenuOpen && <div onClick={() => setIsMenuOpen(false)} className="fixed inset-0 bg-black/50 z-[105] backdrop-blur-sm transition-opacity"></div>}
-
-      {/* ÜST LOGO VE MENÜ BUTONU */}
-      <div className="bg-white px-6 pt-12 pb-6 border-b border-slate-100 flex justify-between items-start">
-        <button onClick={() => setIsMenuOpen(true)} className="bg-slate-50 w-10 h-10 rounded-xl flex items-center justify-center text-lg shadow-sm border border-slate-100">☰</button>
+      {/* HEADER */}
+      <div className="bg-white px-6 pt-12 pb-6 border-b border-slate-100 flex justify-between items-center sticky top-0 z-40">
+        <button onClick={() => setIsMenuOpen(true)} className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center border border-slate-100 text-xl shadow-sm">☰</button>
         <div className="text-right">
-          <p className="text-[9px] text-blue-600 font-black uppercase tracking-[0.3em] mb-1 leading-none">USTA CAM BALKON</p>
-          <h1 className="text-2xl font-black tracking-tighter uppercase leading-none">Usta Takip</h1>
+          <p className="text-[9px] text-blue-600 font-black uppercase tracking-[0.3em] mb-0.5">USTA CAM BALKON</p>
+          <h1 className="text-xl font-black uppercase tracking-tight">{aktifSekme === 'teklifler' ? 'Teklifler' : 'İmalat'}</h1>
         </div>
       </div>
 
-      {/* TARİH SEÇİCİ (SADECE TEKLİFLERDE GÖRÜNÜR) */}
+      {/* TARİH VE GÜN ŞERİDİ */}
       {aktifSekme === 'teklifler' && (
-        <div className="bg-white px-6 pb-6 shadow-sm border-b border-slate-100">
+        <div className="bg-white px-6 pb-6 border-b border-slate-100 shadow-sm">
           <div className="flex gap-2 mb-4">
-            <select value={seciliYil} onChange={(e) => setSeciliYil(Number(e.target.value))} className="bg-slate-100 rounded-xl px-3 py-2 text-xs font-bold border-none outline-none">
-              {yillar.map(y => <option key={y} value={y}>{y}</option>)}
-            </select>
-            <select value={seciliAy} onChange={(e) => setSeciliAy(Number(e.target.value))} className="bg-slate-100 rounded-xl px-3 py-2 text-xs font-bold border-none outline-none">
-              {aylar.map((a, i) => <option key={a} value={i}>{a}</option>)}
-            </select>
+            <select value={seciliYil} onChange={(e) => setSeciliYil(Number(e.target.value))} className="bg-slate-100 rounded-xl px-3 py-2 text-xs font-bold border-none outline-none">{yillar.map(y => <option key={y} value={y}>{y}</option>)}</select>
+            <select value={seciliAy} onChange={(e) => setSeciliAy(Number(e.target.value))} className="bg-slate-100 rounded-xl px-3 py-2 text-xs font-bold border-none outline-none">{aylar.map((a, i) => <option key={a} value={i}>{a}</option>)}</select>
           </div>
-          <div className="flex overflow-x-auto gap-2 pb-2 no-scrollbar scroll-smooth">
+          <div className="flex overflow-x-auto gap-2 pb-2 no-scrollbar">
             {ayinGunleriniGetir().map(gun => (
-              <button key={gun} onClick={() => setSeciliGun(gun)} className={`flex-shrink-0 w-10 h-12 rounded-xl flex items-center justify-center transition-all font-black text-xs ${seciliGun === gun ? 'bg-slate-900 text-white shadow-lg' : 'bg-slate-50 text-slate-400'}`}>
-                {gun}
-              </button>
+              <button key={gun} onClick={() => setSeciliGun(gun)} className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center font-black text-xs transition-all ${seciliGun === gun ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-400'}`}>{gun}</button>
             ))}
           </div>
         </div>
       )}
 
-      {/* BAŞLIK VE EKLE BUTONU */}
-      <div className="p-6 flex justify-between items-center">
-        <div>
-          <h2 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">
-            {aktifSekme === 'teklifler' ? `${seciliGun} ${aylar[seciliAy]} Teklifleri` : 'İmalat & Üretim'}
+      {/* LİSTE */}
+      <div className="p-6 pb-32">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+            {aktifSekme === 'teklifler' ? `${seciliGun} ${aylar[seciliAy]} Kayıtları` : 'Onaylı İşler'}
           </h2>
+          {aktifSekme === 'teklifler' && <button onClick={() => setIsModalOpen(true)} className="bg-blue-600 text-white w-10 h-10 rounded-full font-bold shadow-lg shadow-blue-100 flex items-center justify-center text-xl">+</button>}
         </div>
-        {aktifSekme === 'teklifler' && (
-          <button onClick={() => setIsModalOpen(true)} className="bg-blue-600 text-white w-10 h-10 rounded-full font-bold shadow-lg shadow-blue-100 flex items-center justify-center text-xl">+</button>
-        )}
-      </div>
 
-      {/* LİSTELEME */}
-      <div className="px-6 space-y-4 pb-32">
-        {teklifler.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-[2rem] border-2 border-dashed border-slate-100 text-slate-300 text-[10px] font-black uppercase tracking-widest">Kayıt Bulunmuyor</div>
-        ) : (
-          teklifler.map(t => {
-            const yuzde = ilerlemeHesapla(t.uretim);
-            return (
-              <div key={t.id} className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100 relative">
-                <div className="flex justify-between items-start mb-2">
-                  <h2 className="font-bold text-lg text-slate-900">{t.musteri}</h2>
-                  <span className="text-sm font-black text-slate-900">{t.fiyat}</span>
-                </div>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-4">{t.is_modeli} — {t.ilce}</p>
-                
-                {aktifSekme === 'teklifler' ? (
-                  <div className="flex gap-2 items-center pt-4 border-t border-slate-50">
-                    <select 
-                      value={t.durum} 
-                      onChange={(e) => durumGuncelle(t.id, e.target.value)}
-                      className={`flex-1 text-[10px] font-black uppercase py-3 px-4 rounded-2xl border-none outline-none ${
-                        t.durum === 'onaylandi' ? 'bg-emerald-50 text-emerald-600' : 
-                        t.durum === 'iptal' ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-600'
-                      }`}
-                    >
+        <div className="space-y-4">
+          {teklifler.length === 0 ? (
+            <div className="text-center py-20 border-2 border-dashed border-slate-200 rounded-[2rem] text-slate-300 text-[10px] font-black uppercase">Kayıt Yok</div>
+          ) : (
+            teklifler.map(t => {
+              const yuzde = ilerlemeHesapla(t.uretim);
+              return (
+                <div key={t.id} className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100">
+                  <div className="flex justify-between items-start mb-1">
+                    <h2 className="font-bold text-lg text-slate-900">{t.musteri}</h2>
+                    <span className="text-sm font-black">{t.fiyat}</span>
+                  </div>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-4">{t.is_modeli} — {t.ilce}</p>
+                  {aktifSekme === 'teklifler' ? (
+                    <select value={t.durum} onChange={(e) => durumGuncelle(t.id, e.target.value)} className={`w-full text-[10px] font-black uppercase py-3 px-4 rounded-2xl border-none outline-none ${t.durum === 'onaylandi' ? 'bg-emerald-50 text-emerald-600' : t.durum === 'iptal' ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-600'}`}>
                       <option value="beklemede">Beklemede ⏳</option>
                       <option value="onaylandi">Onaylandı ✅</option>
-                      <option value="iptal">İptal Edildi ❌</option>
+                      <option value="iptal">İptal ❌</option>
                     </select>
-                  </div>
-                ) : (
-                  <button onClick={() => setSelectedJob(t)} className="w-full pt-4 border-t border-slate-50">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-[10px] font-black text-blue-600 uppercase">Üretim: %{yuzde}</span>
-                      <span className="text-lg">→</span>
-                    </div>
-                    <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${yuzde}%` }}></div>
-                    </div>
-                  </button>
-                )}
-              </div>
-            );
-          })
-        )}
+                  ) : (
+                    <button onClick={() => setSelectedJob(t)} className="w-full pt-4 border-t border-slate-50 flex justify-between items-center">
+                      <span className="text-[10px] font-black text-blue-600 uppercase">İlerleme: %{yuzde}</span>
+                      <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden"><div className="h-full bg-blue-500 transition-all" style={{ width: `${yuzde}%` }}></div></div>
+                    </button>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
       </div>
 
-      {/* İMALAT DETAY MODALI */}
-      {selectedJob && (
-        <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-[150] flex items-end justify-center">
-          <div className="bg-white w-full max-w-md p-8 rounded-t-[3rem] shadow-2xl relative max-h-[90vh] overflow-y-auto">
-            <button onClick={() => setSelectedJob(null)} className="absolute right-8 top-8 text-slate-300 text-xl font-bold">✕</button>
-            <h2 className="text-2xl font-black text-slate-900 mb-2">{selectedJob.musteri}</h2>
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-8">{selectedJob.is_modeli} - {selectedJob.ilce}</p>
-            
-            <div className="grid grid-cols-2 gap-3 mb-10">
-              {[
-                { key: 'cizim', label: 'Çizim' },
-                { key: 'camSiparisi', label: 'Cam Sip.' },
-                { key: 'profil', label: 'Profil' },
-                { key: 'camGeldi', label: 'Cam Geldi' },
-                { key: 'atolye', label: 'Atölye' },
-                { key: 'teslim', label: 'Teslim' }
-              ].map((item) => (
-                <button key={item.key} onClick={() => uretimAsamasiGuncelle(selectedJob.id, item.key)} 
-                  className={`flex flex-col items-center justify-center p-5 rounded-[2rem] border-2 transition-all gap-2 ${selectedJob.uretim?.[item.key] ? 'bg-emerald-500 border-emerald-500 text-white' : 'bg-white border-slate-100 text-slate-400'}`}>
-                  <span className="text-[10px] font-black uppercase">{item.label}</span>
-                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center text-[10px] ${selectedJob.uretim?.[item.key] ? 'border-white bg-white/20' : 'border-slate-100'}`}>
-                    {selectedJob.uretim?.[item.key] ? '✓' : ''}
-                  </div>
-                </button>
-              ))}
-            </div>
-            <button onClick={() => setSelectedJob(null)} className="w-full bg-slate-900 text-white p-5 rounded-2xl font-black text-xs uppercase tracking-widest">Kaydet ve Kapat</button>
+      {/* YENİ KAYIT MODALI - KLAVYE DOSTU TASARIM */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-[200] flex items-start justify-center pt-10 px-4">
+          <div className="bg-white w-full max-w-md p-8 rounded-[3rem] shadow-2xl animate-in slide-in-from-bottom-10">
+            <h3 className="text-xl font-black text-slate-900 mb-6 text-center uppercase">Yeni Teklif</h3>
+            <form onSubmit={isKaydet} className="space-y-3">
+              <input required className="w-full bg-slate-50 p-4 rounded-xl text-sm font-bold outline-none border border-transparent focus:border-blue-500" placeholder="Müşteri Adı" onChange={(e) => setYeniIs({...yeniIs, musteri: e.target.value})} />
+              <select required className="w-full bg-slate-50 p-4 rounded-xl text-xs font-bold outline-none" onChange={(e) => setYeniIs({...yeniIs, isModeli: e.target.value})}>
+                <option value="">İş Modeli Seçin...</option>
+                <option value="Cam Balkon">Cam Balkon</option>
+                <option value="Giyotin">Giyotin</option>
+                <option value="Sürme">Sürme</option>
+                <option value="Teras">Teras</option>
+              </select>
+              <div className="grid grid-cols-2 gap-3">
+                <input required className="w-full bg-slate-50 p-4 rounded-xl text-sm font-bold outline-none" placeholder="Fiyat" type="number" onChange={(e) => setYeniIs({...yeniIs, fiyat: e.target.value})} />
+                <input required className="w-full bg-slate-50 p-4 rounded-xl text-sm font-bold outline-none" placeholder="İlçe" onChange={(e) => setYeniIs({...yeniIs, ilce: e.target.value})} />
+              </div>
+              <button type="submit" className="w-full bg-blue-600 text-white p-5 rounded-2xl font-black text-xs uppercase tracking-widest mt-4">KAYDET</button>
+              <button type="button" onClick={() => setIsModalOpen(false)} className="w-full text-slate-300 text-[10px] font-black uppercase py-2">Vazgeç</button>
+            </form>
           </div>
         </div>
       )}
 
-      {/* YENİ KAYIT MODALI */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[150] flex items-end justify-center">
-          <div className="bg-white w-full max-w-md p-8 rounded-t-[3rem] shadow-2xl overflow-y-auto max-h-[90vh]">
-            <h3 className="text-xl font-black text-slate-900 mb-6 text-center uppercase">Yeni Teklif Ekle</h3>
-            <form onSubmit={isKaydet} className="space-y-4 pb-10">
-              <input required className="w-full bg-slate-50 p-5 rounded-2xl text-sm font-bold outline-none border border-transparent focus:border-blue-500" placeholder="Müşteri Adı" onChange={(e) => setYeniIs({...yeniIs, musteri: e.target.value})} />
-              <select required className="w-full bg-slate-50 p-5 rounded-2xl text-xs font-bold outline-none" onChange={(e) => setYeniIs({...yeniIs, isModeli: e.target.value})}>
-                <option value="">İş Modeli...</option>
-                <option value="Cam Balkon">Cam Balkon</option>
-                <option value="Giyotin">Giyotin</option>
-                <option value="Sürme Sistem">Sürme</option>
-                <option value="Teras Kapama">Teras</option>
-              </select>
-              <div className="grid grid-cols-2 gap-3">
-                <input required className="w-full bg-slate-50 p-5 rounded-2xl text-sm font-bold outline-none" placeholder="Fiyat" type="number" onChange={(e) => setYeniIs({...yeniIs, fiyat: e.target.value})} />
-                <input required className="w-full bg-slate-50 p-5 rounded-2xl text-sm font-bold outline-none" placeholder="İlçe" onChange={(e) => setYeniIs({...yeniIs, ilce: e.target.value})} />
-              </div>
-              <button type="submit" className="w-full bg-blue-600 text-white p-5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl">KAYDET</button>
-              <button type="button" onClick={() => setIsModalOpen(false)} className="w-full text-slate-300 text-[10px] font-black uppercase py-4">Vazgeç</button>
-            </form>
+      {/* İMALAT MODALI */}
+      {selectedJob && (
+        <div className="fixed inset-0 bg-slate-900/95 backdrop-blur-md z-[200] flex items-center justify-center px-4">
+          <div className="bg-white w-full max-w-md p-8 rounded-[3rem] shadow-2xl relative overflow-y-auto max-h-[90vh]">
+            <button onClick={() => setSelectedJob(null)} className="absolute right-8 top-8 text-slate-300 text-xl font-bold">✕</button>
+            <h2 className="text-xl font-black text-slate-900 mb-6 uppercase">{selectedJob.musteri} İMALAT</h2>
+            <div className="grid grid-cols-2 gap-2">
+              {['cizim', 'camSiparisi', 'profil', 'camGeldi', 'atolye', 'teslim'].map((key) => (
+                <button key={key} onClick={() => uretimAsamasiGuncelle(selectedJob.id, key)} className={`p-4 rounded-2xl border-2 flex flex-col items-center gap-2 transition-all ${selectedJob.uretim?.[key] ? 'bg-emerald-500 border-emerald-500 text-white' : 'bg-white border-slate-100 text-slate-400'}`}>
+                  <span className="text-[9px] font-black uppercase">{key === 'cizim' ? 'Çizim' : key === 'camSiparisi' ? 'Cam Sip.' : key === 'profil' ? 'Profil' : key === 'camGeldi' ? 'Cam Geldi' : key === 'atolye' ? 'Atölye' : 'Teslim'}</span>
+                  <div className="w-4 h-4 rounded-full border border-current flex items-center justify-center">{selectedJob.uretim?.[key] ? '✓' : ''}</div>
+                </button>
+              ))}
+            </div>
+            <button onClick={() => setSelectedJob(null)} className="w-full bg-slate-900 text-white p-4 rounded-xl font-black text-[10px] uppercase mt-8">Kapat</button>
           </div>
         </div>
       )}
