@@ -12,13 +12,24 @@ const SIPARIS_ASAMALARI = ['cizim', 'camSiparisi', 'profilImalati', 'cizimAtolye
 const URETIM_ASAMALARI = ['sonImalat', 'teslim'];
 const TUM_ASAMALAR = [...SIPARIS_ASAMALARI, ...URETIM_ASAMALARI];
 
+// Sarıdan yeşile giden renk paleti
+const ASAMA_RENKLERI = [
+  'bg-amber-400',   // 1. Çizim
+  'bg-yellow-400',  // 2. Cam Siparişi
+  'bg-lime-400',    // 3. Profil İmalatı
+  'bg-green-400',   // 4. Çizim Atölyeye
+  'bg-emerald-400', // 5. Cam Geldi
+  'bg-emerald-500', // 6. Son İmalat
+  'bg-green-600'    // 7. Teslim
+];
+
 export default function Home() {
   const [teklifler, setTeklifler] = useState<any[]>([]);
   const [yukleniyor, setYukleniyor] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [selectedJob, setSelectedJob] = useState<any>(null);
-  const [aktifSekme, setAktifSekme] = useState('teklifler'); // 'teklifler', 'siparisler', 'uretim'
+  const [aktifSekme, setAktifSekme] = useState('teklifler'); 
   
   const simdi = new Date();
   const [seciliYil, setSeciliYil] = useState(simdi.getFullYear());
@@ -50,7 +61,6 @@ export default function Home() {
     verileriGetir();
   }, [verileriGetir]);
 
-  // İş Durum Kontrolleri
   const isSiparisTamam = (job: any) => {
     const u = job.uretim || {};
     return SIPARIS_ASAMALARI.every(asama => u[asama] === true);
@@ -59,12 +69,6 @@ export default function Home() {
   const isTamamenBitti = (job: any) => {
     const u = job.uretim || {};
     return TUM_ASAMALAR.every(asama => u[asama] === true);
-  };
-
-  const ilerlemeHesapla = (job: any) => {
-    const u = job.uretim || {};
-    const tamamlananlar = TUM_ASAMALAR.filter(asama => u[asama] === true).length;
-    return Math.round((tamamlananlar / TUM_ASAMALAR.length) * 100);
   };
 
   const isKaydet = async (e: React.FormEvent) => {
@@ -123,12 +127,11 @@ export default function Home() {
     verileriGetir();
   };
 
-  // Sekmelere göre filtreleme mantığı (Otomasyon burada çalışır)
   let gosterilecekTeklifler = teklifler;
   if (aktifSekme === 'siparisler') {
-    gosterilecekTeklifler = teklifler.filter(t => !isSiparisTamam(t)); // İlk 5 bitmeyenler
+    gosterilecekTeklifler = teklifler.filter(t => !isSiparisTamam(t)); 
   } else if (aktifSekme === 'uretim') {
-    gosterilecekTeklifler = teklifler.filter(t => isSiparisTamam(t)); // İlk 5 bitenler
+    gosterilecekTeklifler = teklifler.filter(t => isSiparisTamam(t)); 
   }
 
   const getSekmeBaslik = () => {
@@ -140,7 +143,7 @@ export default function Home() {
   return (
     <div className="max-w-xl mx-auto bg-slate-50 min-h-screen text-slate-900 overflow-x-hidden flex flex-col pb-28">
       
-      {/* YANDAN AÇILIR MENÜ (SİDEBAR) */}
+      {/* SİDEBAR */}
       {isSidebarOpen && (
         <>
           <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[110] transition-opacity" onClick={() => setIsSidebarOpen(false)}></div>
@@ -150,17 +153,11 @@ export default function Home() {
               <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">Usta Takip</h2>
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Hoş Geldiniz, Emre Bey</p>
             </div>
-            
             <div className="flex-1 p-4 space-y-2 overflow-y-auto mt-2">
               <button onClick={() => { setAktifSekme('teklifler'); setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 p-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${aktifSekme === 'teklifler' ? 'bg-blue-50 text-blue-600' : 'text-slate-500 active:bg-slate-50'}`}>Teklif Arşivi</button>
               <button onClick={() => { setAktifSekme('siparisler'); setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 p-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${aktifSekme === 'siparisler' ? 'bg-blue-50 text-blue-600' : 'text-slate-500 active:bg-slate-50'}`}>Siparişler</button>
               <button onClick={() => { setAktifSekme('uretim'); setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 p-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${aktifSekme === 'uretim' ? 'bg-blue-50 text-blue-600' : 'text-slate-500 active:bg-slate-50'}`}>Üretim Hattı</button>
-              
-              <div className="h-px bg-slate-100 my-4 mx-2"></div>
-              <button className="w-full flex items-center gap-3 p-4 rounded-2xl font-black text-xs uppercase tracking-widest text-slate-300 cursor-not-allowed">Müşteriler (Yakında)</button>
-              <button className="w-full flex items-center gap-3 p-4 rounded-2xl font-black text-xs uppercase tracking-widest text-slate-300 cursor-not-allowed">Muhasebe (Yakında)</button>
             </div>
-
             <div className="p-6 border-t border-slate-100">
                <button onClick={() => setIsSidebarOpen(false)} className="w-full bg-slate-100 text-slate-500 p-4 rounded-2xl font-black text-xs uppercase active:scale-95 transition-all">Kapat</button>
             </div>
@@ -204,8 +201,11 @@ export default function Home() {
       {/* LİSTE ALANI */}
       <div className="p-3 space-y-3 flex-1">
         {gosterilecekTeklifler.map(t => {
-          const yuzde = ilerlemeHesapla(t);
           const bittiMi = isTamamenBitti(t);
+          
+          // Sekmeye göre gösterilecek aşama listesi belirleniyor (5 kutu veya 7 kutu)
+          const gosterilenAsamalar = aktifSekme === 'siparisler' ? SIPARIS_ASAMALARI : TUM_ASAMALAR;
+
           return (
             <div key={t.id} className={`p-3.5 rounded-2xl shadow-sm border active:scale-[0.98] transition-all ${bittiMi ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-slate-100'}`}>
                 {/* Tıklanabilir Üst Alan */}
@@ -221,7 +221,8 @@ export default function Home() {
                     </div>
                 </div>
 
-                {aktifSekme === 'teklifler' && t.aciklama && (
+                {/* AÇIKLAMA (NOTLAR) ARTIK TÜM SEKMELERDE GÖZÜKÜYOR */}
+                {t.aciklama && (
                   <div className="mt-1.5 mb-1.5 bg-slate-50 p-2 rounded-lg border-l-4 border-slate-200">
                     <p className="text-[10px] text-slate-500 font-medium italic leading-snug line-clamp-2">{t.aciklama}</p>
                   </div>
@@ -233,8 +234,8 @@ export default function Home() {
                   </select>
                 ) : (
                   <>
-                    {/* SİPARİŞ & ÜRETİM ORTAK ALANI: MONTAJ TİPİ VE BAR */}
-                    <div className="mt-3 flex gap-2 items-center">
+                    {/* SİPARİŞ & ÜRETİM ORTAK ALANI: MONTAJ TİPİ VE PARÇALI BAR */}
+                    <div className="mt-3 flex gap-3 items-center">
                         <select 
                             value={t.uretim?.montajTipi || 'Montajlı'} 
                             onChange={(e) => montajTipiGuncelle(t.id, e.target.value)}
@@ -247,9 +248,17 @@ export default function Home() {
                         {bittiMi ? (
                             <div className="flex-1 bg-emerald-500 text-white text-[10px] font-black uppercase text-center py-1.5 rounded-md shadow-sm tracking-widest">İŞ TESLİM EDİLDİ 🏁</div>
                         ) : (
-                            <div className="flex-1 bg-slate-100 rounded-full h-4 overflow-hidden relative shadow-inner">
-                                <div className="absolute top-0 left-0 h-full bg-blue-600 transition-all duration-500" style={{ width: `${yuzde}%` }}></div>
-                                <span className="absolute inset-0 flex items-center justify-center text-[8px] font-black text-white mix-blend-difference">% {yuzde}</span>
+                            // YENİ TASARIM: YÜZDE YERİNE PARÇALI RENKLİ BAR (SEGMENTED BAR)
+                            <div className="flex-1 flex gap-1 h-2.5">
+                                {gosterilenAsamalar.map((asama, i) => {
+                                    const isCompleted = t.uretim?.[asama];
+                                    return (
+                                        <div 
+                                          key={asama} 
+                                          className={`flex-1 rounded-[2px] transition-all duration-300 ${isCompleted ? ASAMA_RENKLERI[i] : 'bg-slate-100'}`}
+                                        ></div>
+                                    );
+                                })}
                             </div>
                         )}
                     </div>
@@ -260,7 +269,7 @@ export default function Home() {
         })}
       </div>
 
-      {/* ALT NAVİGASYON - 3'LÜ YAPI */}
+      {/* ALT NAVİGASYON */}
       <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-slate-100 px-6 py-3 flex justify-between items-center z-50 rounded-t-[1.5rem] shadow-2xl">
         <button onClick={() => setAktifSekme('teklifler')} className={`flex flex-col items-center gap-1 transition-all flex-1 ${aktifSekme === 'teklifler' ? 'text-blue-600' : 'text-slate-300'}`}>
             <span className="text-[10px] font-black uppercase tracking-widest text-center">TEKLİFLER</span>
@@ -315,7 +324,7 @@ export default function Home() {
                 <button onClick={() => setSelectedJob(null)} className="text-slate-300 text-xl font-bold">✕</button>
             </div>
             
-            <textarea value={selectedJob.aciklama || ''} onChange={(e) => aciklamaGuncelle(selectedJob.id, e.target.value)} className="w-full bg-slate-50 p-3 rounded-xl text-base font-medium h-20 border-none outline-none" placeholder="Atölye notları..." />
+            <textarea value={selectedJob.aciklama || ''} onChange={(e) => aciklamaGuncelle(selectedJob.id, e.target.value)} className="w-full bg-slate-50 p-3 rounded-xl text-base font-medium h-20 border-none outline-none" placeholder="İş notları..." />
             
             {/* AŞAMALAR */}
             <div className="grid grid-cols-2 gap-2 mb-2">
@@ -326,8 +335,9 @@ export default function Home() {
                 { key: 'profilImalati', label: 'Profil İmalatı' }, 
                 { key: 'cizimAtolyeyeVerildi', label: 'Çizim Atölyeye' }, 
                 { key: 'camGeldi', label: 'Cam Geldi' } 
-              ].map((item) => (
-                <button key={item.key} onClick={() => uretimAsamasiGuncelle(selectedJob.id, item.key)} className={`p-3 rounded-xl border-2 flex flex-col items-center gap-1 transition-all ${selectedJob.uretim?.[item.key] ? 'bg-emerald-500 border-emerald-500 text-white shadow-md' : 'bg-white border-slate-100 text-slate-400'}`}>
+              ].map((item, idx) => (
+                // Detay panelinde buton renklerini de yeni palete uydurabiliriz ya da genel yeşil bırakabiliriz. Şık durması için dinamik rengini verdim.
+                <button key={item.key} onClick={() => uretimAsamasiGuncelle(selectedJob.id, item.key)} className={`p-3 rounded-xl border-2 flex flex-col items-center gap-1 transition-all ${selectedJob.uretim?.[item.key] ? `${ASAMA_RENKLERI[idx]} border-transparent text-white shadow-md` : 'bg-white border-slate-100 text-slate-400'}`}>
                     <span className="text-[9px] font-black uppercase text-center leading-tight">{item.label}</span>
                     <div className="text-xs">{selectedJob.uretim?.[item.key] ? '✓' : '○'}</div>
                 </button>
@@ -337,8 +347,8 @@ export default function Home() {
               {aktifSekme === 'uretim' && [ 
                 { key: 'sonImalat', label: 'Son İmalat' }, 
                 { key: 'teslim', label: 'Teslim' } 
-              ].map((item) => (
-                <button key={item.key} onClick={() => uretimAsamasiGuncelle(selectedJob.id, item.key)} className={`p-3 rounded-xl border-2 flex flex-col items-center gap-1 transition-all ${selectedJob.uretim?.[item.key] ? 'bg-indigo-500 border-indigo-500 text-white shadow-md' : 'bg-white border-slate-100 text-slate-400'}`}>
+              ].map((item, idx) => (
+                <button key={item.key} onClick={() => uretimAsamasiGuncelle(selectedJob.id, item.key)} className={`p-3 rounded-xl border-2 flex flex-col items-center gap-1 transition-all ${selectedJob.uretim?.[item.key] ? `${ASAMA_RENKLERI[idx+5]} border-transparent text-white shadow-md` : 'bg-white border-slate-100 text-slate-400'}`}>
                     <span className="text-[9px] font-black uppercase text-center leading-tight">{item.label}</span>
                     <div className="text-xs">{selectedJob.uretim?.[item.key] ? '✓' : '○'}</div>
                 </button>
