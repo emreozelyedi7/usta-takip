@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
-// Vercel uyarısını çözmek için ortam değişkenleri güvenli tanımlandı
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 const supabase = createClient(supabaseUrl, supabaseKey);
@@ -12,6 +11,7 @@ export default function Home() {
   const [teklifler, setTeklifler] = useState<any[]>([]);
   const [yukleniyor, setYukleniyor] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Yandan açılır menü kontrolü
   const [selectedJob, setSelectedJob] = useState<any>(null);
   const [aktifSekme, setAktifSekme] = useState('teklifler'); 
   
@@ -25,7 +25,6 @@ export default function Home() {
 
   const [yeniIs, setYeniIs] = useState({ musteri: "", isModeli: "Cam Balkon", ilce: "", fiyat: "", kaynak: "Instagram", aciklama: "" });
 
-  // Vercel React-Hook uyarısını çözmek için useCallback kullanıldı
   const verileriGetir = useCallback(async () => {
     setYukleniyor(true);
     const formatliTarih = `${seciliYil}-${String(seciliAy + 1).padStart(2, '0')}-${String(seciliGun).padStart(2, '0')}`;
@@ -98,11 +97,72 @@ export default function Home() {
   return (
     <div className="max-w-xl mx-auto bg-slate-50 min-h-screen text-slate-900 overflow-x-hidden flex flex-col pb-24">
       
+      {/* YANDAN AÇILIR MENÜ (SİDEBAR) EKLENDİ */}
+      {isSidebarOpen && (
+        <>
+          {/* Arka plan karartması */}
+          <div 
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[110] transition-opacity" 
+            onClick={() => setIsSidebarOpen(false)}
+          ></div>
+          
+          {/* Menü Paneli */}
+          <div className="fixed top-0 left-0 bottom-0 w-3/4 max-w-xs bg-white z-[120] shadow-[20px_0_40px_rgba(0,0,0,0.1)] animate-in slide-in-from-left duration-300 flex flex-col">
+            
+            {/* Menü Başlık Alanı */}
+            <div className="p-6 bg-slate-50 border-b border-slate-100 flex flex-col justify-end pt-12">
+              <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center text-white font-black text-2xl mb-4 shadow-lg shadow-blue-200">
+                U
+              </div>
+              <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">Usta Takip</h2>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Hoş Geldiniz, Emre Bey</p>
+            </div>
+            
+            {/* Menü Linkleri */}
+            <div className="flex-1 p-4 space-y-2 overflow-y-auto mt-2">
+              <button 
+                onClick={() => { setAktifSekme('teklifler'); setIsSidebarOpen(false); }} 
+                className={`w-full flex items-center gap-3 p-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${aktifSekme === 'teklifler' ? 'bg-blue-50 text-blue-600' : 'text-slate-500 active:bg-slate-50'}`}
+              >
+                  Teklif Arşivi
+              </button>
+              <button 
+                onClick={() => { setAktifSekme('uretim'); setIsSidebarOpen(false); }} 
+                className={`w-full flex items-center gap-3 p-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${aktifSekme === 'uretim' ? 'bg-blue-50 text-blue-600' : 'text-slate-500 active:bg-slate-50'}`}
+              >
+                  Üretim Hattı
+              </button>
+              
+              <div className="h-px bg-slate-100 my-4 mx-2"></div>
+              
+              <button className="w-full flex items-center gap-3 p-4 rounded-2xl font-black text-xs uppercase tracking-widest text-slate-300 cursor-not-allowed">
+                  Müşteriler (Yakında)
+              </button>
+              <button className="w-full flex items-center gap-3 p-4 rounded-2xl font-black text-xs uppercase tracking-widest text-slate-300 cursor-not-allowed">
+                  Muhasebe (Yakında)
+              </button>
+            </div>
+
+            <div className="p-6 border-t border-slate-100">
+               <button onClick={() => setIsSidebarOpen(false)} className="w-full bg-slate-100 text-slate-500 p-4 rounded-2xl font-black text-xs uppercase active:scale-95 transition-all">Menüyü Kapat</button>
+            </div>
+          </div>
+        </>
+      )}
+
       {/* ÜST PANEL */}
       <div className="bg-white px-4 pt-8 pb-3 border-b border-slate-100 shadow-sm sticky top-0 z-40">
         <div className="flex justify-between items-center mb-3">
-            <h1 className="text-xl font-black tracking-tighter uppercase">{aktifSekme === 'teklifler' ? 'Teklif Arşivi' : 'Üretim Hattı'}</h1>
-            <button onClick={() => setIsModalOpen(true)} className="bg-slate-900 text-white w-8 h-8 rounded-xl font-bold shadow-md flex items-center justify-center">+</button>
+            {/* HAMBURGER BUTONU EKLENDİ */}
+            <div className="flex items-center gap-2">
+                <button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 text-slate-900 active:bg-slate-100 rounded-xl transition-colors">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 6h16M4 12h16M4 18h8" />
+                    </svg>
+                </button>
+                <h1 className="text-xl font-black tracking-tighter uppercase">{aktifSekme === 'teklifler' ? 'Teklif Arşivi' : 'Üretim Hattı'}</h1>
+            </div>
+            <button onClick={() => setIsModalOpen(true)} className="bg-slate-900 text-white w-8 h-8 rounded-xl font-bold shadow-md flex items-center justify-center active:scale-90 transition-all">+</button>
         </div>
         
         {aktifSekme === 'teklifler' && (
@@ -126,7 +186,7 @@ export default function Home() {
         )}
       </div>
 
-      {/* LİSTE ALANI - ÇOK DAHA KISA VE KOMPAKT */}
+      {/* LİSTE ALANI */}
       <div className="p-3 space-y-3 flex-1">
         {teklifler.map(t => {
           const yuzde = ilerlemeHesapla(t.uretim);
@@ -160,7 +220,6 @@ export default function Home() {
                     </div>
                   </div>
                 ) : (
-                  // BUTONLAR CİDDİ ORANDA KISALTILDI (h-9 eklendi, py düşürüldü, metin text-base kaldı zoom yapmasın diye)
                   <select 
                     value={t.durum} 
                     onChange={(e) => durumGuncelle(t.id, e.target.value)} 
@@ -179,7 +238,7 @@ export default function Home() {
         })}
       </div>
 
-      {/* ALT NAVİGASYON */}
+      {/* ALT NAVİGASYON - SADECE HIZLI GEÇİŞ İÇİN KORUNDU */}
       <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-slate-100 px-12 py-3 flex justify-around items-center z-50 rounded-t-[1.5rem] shadow-2xl">
         <button onClick={() => setAktifSekme('teklifler')} className={`flex flex-col items-center gap-1 transition-all ${aktifSekme === 'teklifler' ? 'text-blue-600' : 'text-slate-300'}`}>
             <span className="text-[10px] font-black uppercase tracking-widest text-center">TEKLİFLER</span>
