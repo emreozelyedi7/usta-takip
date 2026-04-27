@@ -105,6 +105,18 @@ export default function Home() {
     return { gecenGun, kalanGun, renkler };
   };
 
+  // Zaman kaymalarını önleyen güvenli tarih fonksiyonu
+  const formatTarihKisa = (tarihStr: string) => {
+    if(!tarihStr) return "";
+    if(tarihStr.includes('T')) {
+        const date = new Date(tarihStr);
+        return `${date.getDate()} ${aylar[date.getMonth()]}`;
+    }
+    const parts = tarihStr.split('-');
+    if(parts.length === 3) return `${parseInt(parts[2], 10)} ${aylar[parseInt(parts[1], 10)-1]}`;
+    return tarihStr;
+  };
+
   const fiyatiSayiyaCevir = (fiyatStr: any) => {
     if (!fiyatStr) return 0;
     return Number(fiyatStr.toString().replace(/[^0-9]/g, '')) || 0;
@@ -115,21 +127,12 @@ export default function Home() {
     const formatliTarih = `${seciliYil}-${String(seciliAy + 1).padStart(2, '0')}-${String(seciliGun).padStart(2, '0')}`;
     
     const { error } = await supabase.from('teklifler').insert([{ 
-        musteri: yeniIs.musteri, 
-        is_modeli: yeniIs.isModeli, 
-        adet: Number(yeniIs.adet) || 1, 
-        ilce: yeniIs.ilce, 
-        fiyat: yeniIs.fiyat + " ₺", 
-        kaynak: yeniIs.kaynak, 
-        aciklama: yeniIs.aciklama, 
-        is_tarihi: formatliTarih, 
-        durum: 'beklemede', 
+        musteri: yeniIs.musteri, is_modeli: yeniIs.isModeli, adet: Number(yeniIs.adet) || 1, ilce: yeniIs.ilce, fiyat: yeniIs.fiyat + " ₺", kaynak: yeniIs.kaynak, aciklama: yeniIs.aciklama, is_tarihi: formatliTarih, durum: 'beklemede', 
         uretim: { cizim: false, camSiparisi: false, profilImalati: false, cizimAtolyeyeVerildi: false, camGeldi: false, sonImalat: false, teslim: false, montajTipi: 'Montajlı', hata: 'Yok' } 
     }]);
 
-    if (error) { 
-        alert("KAYIT HATASI: " + error.message);
-    } else {
+    if (error) alert("KAYIT HATASI: " + error.message);
+    else {
         verileriGetir(); 
         setIsModalOpen(false); 
         setYeniIs({ musteri: "", isModeli: MODELLER[0], adet: "1", ilce: "", fiyat: "", kaynak: KAYNAKLAR[0], aciklama: "" }); 
@@ -181,6 +184,7 @@ export default function Home() {
     verileriGetir();
   };
 
+  // Sekme Filtreleme
   let gosterilecekTeklifler = teklifler;
   if (aktifSekme === 'siparisler') gosterilecekTeklifler = teklifler.filter(t => t.durum === 'onaylandi' && !isSiparisTamam(t)); 
   else if (aktifSekme === 'uretim') gosterilecekTeklifler = teklifler.filter(t => t.durum === 'onaylandi' && isSiparisTamam(t)); 
@@ -279,28 +283,68 @@ export default function Home() {
           gosterilecekTeklifler.map(t => {
             const bittiMi = isTamamenBitti(t);
             const zaman = getZamanDurumu(t);
+            const varHata = t.uretim?.hata && t.uretim.hata !== 'Yok';
+
             return (
-              <div key={t.id} className={`p-4 rounded-[1.5rem] shadow-sm border active:scale-[0.98] transition-all relative overflow-hidden ${bittiMi ? 'bg-emerald-50 border-emerald-200' : (aktifSekme!=='teklifler'&&zaman?zaman.renkler.kart:'bg-white border-slate-100')}`}>
-                  {/* TIKLAMA OLAYI BURADA */}
-                  <div onClick={() => aktifSekme !== 'teklifler' && setSelectedJob(t)} className="cursor-pointer">
-                      <div className="flex justify-between items-start mb-2">
-                          <div className="flex-1">
-                              <h2 className="font-bold text-[16px] text-slate-900 leading-none">{t.musteri}</h2>
-                              <div className="flex items-center gap-1.5 mt-2">
-                                  <span className="text-[9px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-black">📅 {t.is_tarihi.split('-').reverse().slice(0,2).join('/')}</span>
-                                  <span className="text-[9px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded font-black">{t.is_modeli} • {t.adet}</span>
-                              </div>
-                          </div>
-                          <div className="text-right">
-                              <p className="text-[14px] font-black text-slate-900">{t.fiyat}</p>
-                              {zaman && !bittiMi && aktifSekme !== 'teklifler' && <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded-md border block mt-1 ${zaman.renkler.badge}`}>{zaman.kalanGun} GÜN</span>}
+              /* DÜZELTME BURADA: TIKLAMA OLAYI (onClick) KARTIN EN DIŞINA, KÖK DİV'E ALINDI */
+              <div 
+                key={t.id} 
+                onClick={() => aktifSekme !== 'teklifler' && setSelectedJob(t)}
+                className={`p-4 rounded-[1.5rem] shadow-sm border active:scale-[0.98] transition-all relative overflow-hidden ${aktifSekme !== 'teklifler' ? 'cursor-pointer' : ''} ${bittiMi ? 'bg-emerald-50 border-emerald-200' : (aktifSekme!=='teklifler'&&zaman?zaman.renkler.kart:'bg-white border-slate-100')}`}
+              >
+                  {varHata && aktifSekme === 'uretim' && <div className="bg-red-600 text-white text-[9px] font-black uppercase px-2 py-1 text-center animate-pulse tracking-widest mb-2 rounded-lg">⚠️ HATA: {t.uretim.hata}</div>}
+
+                  <div className="flex justify-between items-start mb-2">
+                      <div className="flex-1">
+                          <h2 className="font-bold text-[16px] text-slate-900 leading-none">{t.musteri}</h2>
+                          <div className="flex items-center gap-1.5 mt-2">
+                              <span className="text-[9px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-black">📅 {aktifSekme==='teklifler' ? formatTarihKisa(t.is_tarihi) : `ONAY: ${formatTarihKisa(t.is_tarihi)}`}</span>
+                              <span className="text-[9px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded font-black">{t.is_modeli} • {t.adet} ADET</span>
                           </div>
                       </div>
+                      <div className="text-right">
+                          <p className="text-[14px] font-black text-slate-900">{t.fiyat}</p>
+                          {zaman && !bittiMi && aktifSekme !== 'teklifler' && <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded-md border block mt-1 ${zaman.renkler.badge}`}>{zaman.kalanGun} GÜN</span>}
+                      </div>
                   </div>
+
+                  {t.aciklama && <div className="mt-1.5 mb-1.5 bg-white/60 p-2 rounded-lg border-l-2 border-slate-300"><p className="text-[10px] text-slate-600 font-medium italic leading-snug line-clamp-2">{t.aciklama}</p></div>}
+
                   {aktifSekme === 'teklifler' ? (
-                    <select value={t.durum} onChange={(e) => durumGuncelle(t.id, e.target.value)} className={`w-full mt-2 text-base font-black uppercase py-0 px-2 rounded-xl border-none outline-none h-10 shadow-sm ${t.durum === 'onaylandi' ? 'bg-emerald-500 text-white' : t.durum === 'iptal' ? 'bg-rose-500 text-white' : 'bg-amber-400 text-white'}`}><option value="beklemede">BEKLEMEDE ⏳</option><option value="onaylandi">ONAYLANDI ✅</option><option value="iptal">İPTAL ❌</option></select>
+                    <select 
+                        value={t.durum} 
+                        onClick={(e) => e.stopPropagation()} 
+                        onChange={(e) => durumGuncelle(t.id, e.target.value)} 
+                        className={`w-full mt-2 text-base font-black uppercase py-0 px-2 rounded-xl border-none outline-none h-10 shadow-sm ${t.durum === 'onaylandi' ? 'bg-emerald-500 text-white' : t.durum === 'iptal' ? 'bg-rose-500 text-white' : 'bg-amber-400 text-white'}`}
+                    >
+                        <option value="beklemede">BEKLEMEDE ⏳</option>
+                        <option value="onaylandi">ONAYLANDI ✅</option>
+                        <option value="iptal">İPTAL ❌</option>
+                    </select>
                   ) : (
-                    <div className="mt-3 flex gap-2 h-2">{ (aktifSekme==='siparisler'?SIPARIS_ASAMALARI:TUM_ASAMALAR).map((asama, i) => (<div key={asama} className={`flex-1 rounded-full ${t.uretim?.[asama] ? ASAMA_RENKLERI[i] : 'bg-slate-100'}`}></div>)) }</div>
+                    <div className="mt-3 flex gap-2 items-center">
+                        <select 
+                            value={t.uretim?.montajTipi || 'Montajlı'} 
+                            onClick={(e) => e.stopPropagation()} 
+                            onChange={(e) => montajTipiGuncelle(t.id, e.target.value)} 
+                            className={`text-[9px] font-black uppercase py-1 px-1.5 rounded-md border-none outline-none shadow-sm h-7 ${t.uretim?.montajTipi === 'Demonte' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600'}`}
+                        >
+                            <option value="Montajlı">MONTAJLI</option>
+                            <option value="Demonte">DEMONTE</option>
+                        </select>
+                        
+                        {bittiMi ? (
+                            <div className="flex-1 bg-emerald-500 text-white text-[9px] font-black uppercase text-center py-1 rounded-md shadow-sm h-7 flex items-center justify-center gap-2">
+                                <span>TESLİM EDİLDİ 🏁</span>
+                            </div>
+                        ) : (
+                            <div className="flex-1 flex gap-[2px] h-2">
+                                {(aktifSekme==='siparisler'?SIPARIS_ASAMALARI:TUM_ASAMALAR).map((asama, i) => (
+                                    <div key={asama} className={`flex-1 rounded-[1px] transition-all duration-300 ${t.uretim?.[asama] ? ASAMA_RENKLERI[i] : 'bg-slate-200/60'}`}></div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                   )}
               </div>
             );
@@ -359,7 +403,7 @@ export default function Home() {
                 <div>
                     <h2 className="text-xl font-black text-slate-900">{selectedJob.musteri}</h2>
                     <div className="flex items-center gap-1.5 mt-1.5">
-                        <span className="text-[9px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-black border border-slate-200">ONAY: {selectedJob.is_tarihi.split('-').reverse().slice(0,2).join('/')}</span>
+                        <span className="text-[9px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-black border border-slate-200">ONAY: {formatTarihKisa(selectedJob.is_tarihi)}</span>
                         <span className="text-[9px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded font-black border border-blue-100">{selectedJob.is_modeli} • {selectedJob.adet || 1} ADET</span>
                     </div>
                 </div>
