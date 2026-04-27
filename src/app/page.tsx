@@ -31,22 +31,23 @@ export default function Home() {
   const aylar = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
   const yillar = [2025, 2026, 2027];
 
-  // Adet verisi eklendi (Varsayılan 1)
   const [yeniIs, setYeniIs] = useState({ musteri: "", isModeli: "Cam Balkon", adet: "1", ilce: "", fiyat: "", kaynak: "Instagram", aciklama: "" });
 
   const gunListesiRef = useRef<HTMLDivElement>(null);
+  
+  // SWIPE EKRAN KONTROLLERİ İÇİN
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
 
   const verileriGetir = useCallback(async () => {
     setYukleniyor(true);
     const formatliTarih = `${seciliYil}-${String(seciliAy + 1).padStart(2, '0')}-${String(seciliGun).padStart(2, '0')}`;
     let query = supabase.from('teklifler').select('*');
-    
     if (aktifSekme === 'teklifler') {
         query = query.eq('is_tarihi', formatliTarih);
     } else {
         query = query.eq('durum', 'onaylandi');
     }
-    
     const { data } = await query.order('created_at', { ascending: false });
     if (data) setTeklifler(data);
     setYukleniyor(false);
@@ -56,7 +57,6 @@ export default function Home() {
     verileriGetir();
   }, [verileriGetir]);
 
-  // TARİH ŞERİDİ OTOMATİK ODAKLANMA (AUTO-SCROLL)
   useEffect(() => {
     if (gunListesiRef.current && aktifSekme === 'teklifler') {
       const selectedButton = gunListesiRef.current.querySelector(`[data-day="${seciliGun}"]`);
@@ -76,13 +76,24 @@ export default function Home() {
     return TUM_ASAMALAR.every(asama => u[asama] === true);
   };
 
+  // MONTAJ KALAN GÜN HESAPLAMA MANTIĞI
+  const getKalanGun = (job: any) => {
+    if (!job.uretim?.cizimTarihi) return null;
+    const start = new Date(job.uretim.cizimTarihi);
+    const now = new Date();
+    // Gecen gunu hesapla
+    const diffTime = now.getTime() - start.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    return 25 - diffDays;
+  };
+
   const isKaydet = async (e: React.FormEvent) => {
     e.preventDefault();
     const formatliTarih = `${seciliYil}-${String(seciliAy + 1).padStart(2, '0')}-${String(seciliGun).padStart(2, '0')}`;
     const { error } = await supabase.from('teklifler').insert([{ 
         musteri: yeniIs.musteri,
         is_modeli: yeniIs.isModeli,
-        adet: Number(yeniIs.adet) || 1, // Veritabanına Adet gönderiliyor
+        adet: Number(yeniIs.adet) || 1,
         ilce: yeniIs.ilce,
         fiyat: yeniIs.fiyat + " ₺",
         kaynak: yeniIs.kaynak,
@@ -95,15 +106,20 @@ export default function Home() {
         verileriGetir(); 
         setIsModalOpen(false); 
         setYeniIs({ musteri: "", isModeli: "Cam Balkon", adet: "1", ilce: "", fiyat: "", kaynak: "Instagram", aciklama: "" }); 
-    } else {
-        alert("Kayıt Hatası! Supabase'de 'adet' kolonunu açtığından emin ol.");
     }
   };
 
   const uretimAsamasiGuncelle = async (teklifId: number, asama: string) => {
     const job = teklifler.find(t => t.id === teklifId);
     if (!job) return;
+    
     const guncelUretim = { ...job.uretim, [asama]: !job.uretim?.[asama] };
+    
+    // EĞER ÇİZİM İŞARETLENDİYSE VE TARİH YOKSA, SAYACI BAŞLAT
+    if (asama === 'cizim' && guncelUretim.cizim === true && !guncelUretim.cizimTarihi) {
+        guncelUretim.cizimTarihi = new Date().toISOString();
+    }
+
     const yeniListe = teklifler.map(t => t.id === teklifId ? { ...t, uretim: guncelUretim } : t);
     setTeklifler(yeniListe);
     setSelectedJob({ ...job, uretim: guncelUretim });
@@ -132,6 +148,25 @@ export default function Home() {
     verileriGetir();
   };
 
+  // EKRANI KAYDIRMA ALGILAYICI (SWIPE TO OPEN SIDEBAR)
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance < -70; // Soldan sağa doğru 70px çekilirse
+    if (isLeftSwipe && !isModalOpen && !selectedJob) {
+      setIsSidebarOpen(true);
+    }
+  };
+
   let gosterilecekTeklifler = teklifler;
   if (aktifSekme === 'siparisler') {
     gosterilecekTeklifler = teklifler.filter(t => !isSiparisTamam(t)); 
@@ -146,8 +181,19 @@ export default function Home() {
   };
 
   return (
-    <div className="max-w-xl mx-auto bg-slate-50 min-h-screen text-slate-900 overflow-x-hidden flex flex-col pb-28">
-      
+    // EKRAN KAYMASINI VE GERİ GİTMEYİ ENGELLEYEN TOUCH EVENTLERİ VE CSS EKLENDİ
+    <div 
+      className="max-w-xl mx-auto bg-slate-50 min-h-screen text-slate-900 overflow-x-hidden flex flex-col pb-28 relative"
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+      style={{ overscrollBehaviorX: 'none' }} 
+    >
+      {/* TARAYICININ GERİ GİTME JESTİNİ KESİNLİKLE KAPATAN GLOBAL CSS */}
+      <style dangerouslySetInnerHTML={{__html: `
+        body, html { overscroll-behavior-x: none; touch-action: pan-y; }
+      `}} />
+
       {/* SİDEBAR */}
       {isSidebarOpen && (
         <>
@@ -192,8 +238,6 @@ export default function Home() {
                 {aylar.map((a, i) => <option key={i} value={i}>{a}</option>)}
               </select>
             </div>
-            
-            {/* GÜN SEÇİCİ (REF EKLENDİ) */}
             <div ref={gunListesiRef} className="flex overflow-x-auto gap-1.5 pb-1" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
               {Array.from({ length: new Date(seciliYil, seciliAy + 1, 0).getDate() }, (_, i) => i + 1).map(gun => (
                 <button 
@@ -215,29 +259,46 @@ export default function Home() {
         {gosterilecekTeklifler.map(t => {
           const bittiMi = isTamamenBitti(t);
           const gosterilenAsamalar = aktifSekme === 'siparisler' ? SIPARIS_ASAMALARI : TUM_ASAMALAR;
+          const kalanGun = getKalanGun(t);
+          const isKritik = kalanGun !== null && kalanGun <= 10;
 
           return (
-            <div key={t.id} className={`p-3.5 rounded-2xl shadow-sm border active:scale-[0.98] transition-all ${bittiMi ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-slate-100'}`}>
+            <div key={t.id} className={`p-3.5 rounded-2xl shadow-sm border active:scale-[0.98] transition-all relative overflow-hidden ${
+                bittiMi ? 'bg-emerald-50 border-emerald-200' : 
+                (isKritik && aktifSekme !== 'teklifler') ? 'bg-rose-50 border-rose-300' : 'bg-white border-slate-100'
+            }`}>
                 
+                {/* KRİTİK GÜN UYARISI (10 Gün ve Altı) */}
+                {isKritik && !bittiMi && aktifSekme !== 'teklifler' && (
+                  <div className="absolute top-0 right-0 bg-red-600 text-white text-[9px] font-black uppercase px-3 py-1 rounded-bl-xl shadow-sm animate-pulse tracking-widest z-10">
+                    🚨 Montaja {kalanGun <= 0 ? 'SÜRE DOLDU' : `${kalanGun} GÜN KALDI!`}
+                  </div>
+                )}
+
                 <div onClick={() => aktifSekme !== 'teklifler' && setSelectedJob(t)}>
                     <div className="flex justify-between items-start mb-2">
                         <div className="flex-1 pr-2">
                             <h2 className="font-bold text-base leading-tight text-slate-800">{t.musteri}</h2>
-                            
-                            {/* MODEL VE ADET VURGULU GÖSTERİMİ */}
                             <div className="flex items-center flex-wrap gap-1.5 mt-1.5">
-                                <span className="text-[10px] bg-blue-50 text-blue-700 px-2 py-1 rounded-md font-black uppercase tracking-wider border border-blue-100 shadow-sm">
+                                <span className={`text-[10px] px-2 py-1 rounded-md font-black uppercase tracking-wider border shadow-sm ${isKritik && !bittiMi ? 'bg-red-100 text-red-700 border-red-200' : 'bg-blue-50 text-blue-700 border-blue-100'}`}>
                                     {t.is_modeli} • {t.adet || 1} ADET
                                 </span>
                                 <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider pl-1 border-l-2 border-slate-200">{t.ilce}</span>
                             </div>
                         </div>
-                        <div className="text-right text-sm font-black text-slate-900">{t.fiyat}</div>
+                        <div className="text-right text-sm font-black text-slate-900 mt-1">{t.fiyat}</div>
                     </div>
                 </div>
 
+                {/* NORMAL SÜRE GÖSTERİMİ (> 10 Gün) */}
+                {!isKritik && kalanGun !== null && !bittiMi && aktifSekme !== 'teklifler' && (
+                  <div className="mb-2 bg-slate-100/50 text-slate-500 text-[9px] font-black uppercase px-2 py-1.5 rounded-lg border border-slate-100 inline-block tracking-widest">
+                    ⏳ Teslime: {kalanGun} Gün
+                  </div>
+                )}
+
                 {t.aciklama && (
-                  <div className="mt-2 mb-2 bg-slate-50 p-2 rounded-lg border-l-4 border-slate-200">
+                  <div className={`mt-1.5 mb-1.5 p-2 rounded-lg border-l-4 ${isKritik && !bittiMi && aktifSekme !== 'teklifler' ? 'bg-white/60 border-red-300' : 'bg-slate-50 border-slate-200'}`}>
                     <p className="text-[10px] text-slate-500 font-medium italic leading-snug line-clamp-2">{t.aciklama}</p>
                   </div>
                 )}
@@ -267,7 +328,7 @@ export default function Home() {
                                     return (
                                         <div 
                                           key={asama} 
-                                          className={`flex-1 rounded-[2px] transition-all duration-300 ${isCompleted ? ASAMA_RENKLERI[i] : 'bg-slate-100'}`}
+                                          className={`flex-1 rounded-[2px] transition-all duration-300 ${isCompleted ? ASAMA_RENKLERI[i] : (isKritik ? 'bg-rose-200' : 'bg-slate-100')}`}
                                         ></div>
                                     );
                                 })}
@@ -297,7 +358,7 @@ export default function Home() {
         </button>
       </div>
 
-      {/* YENİ KAYIT MODALI (ADET ALANI EKLENDİ) */}
+      {/* YENİ KAYIT MODALI */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-sm p-6 rounded-[2rem] shadow-2xl animate-in zoom-in-95 duration-200">
@@ -319,9 +380,7 @@ export default function Home() {
                 </select>
               </div>
               <input required className="w-full bg-slate-100 p-3 rounded-xl text-base font-bold outline-none" placeholder="İlçe" value={yeniIs.ilce} onChange={(e) => setYeniIs({...yeniIs, ilce: e.target.value})} />
-              
               <textarea className="w-full bg-slate-100 p-3 rounded-xl text-base font-bold h-16 resize-none outline-none" placeholder="Notlar..." value={yeniIs.aciklama} onChange={(e) => setYeniIs({...yeniIs, aciklama: e.target.value})}></textarea>
-              
               <button type="submit" className="w-full bg-blue-600 text-white p-3.5 rounded-xl font-black text-sm uppercase shadow-xl mt-1 active:scale-95">İŞİ KAYDET</button>
               <button type="button" onClick={() => setIsModalOpen(false)} className="w-full text-slate-400 text-xs font-black uppercase py-2 text-center">İPTAL</button>
             </form>
@@ -329,7 +388,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* DETAY PANELİ (SİPARİŞ & ÜRETİM ORTAK) */}
+      {/* DETAY PANELİ */}
       {selectedJob && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-end justify-center">
           <div className="bg-white w-full max-w-md p-6 rounded-t-[2rem] shadow-2xl flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
@@ -348,23 +407,13 @@ export default function Home() {
             <textarea value={selectedJob.aciklama || ''} onChange={(e) => aciklamaGuncelle(selectedJob.id, e.target.value)} className="w-full bg-slate-50 p-3 rounded-xl text-base font-medium h-20 border-none outline-none" placeholder="İş notları..." />
             
             <div className="grid grid-cols-2 gap-2 mb-2">
-              {[ 
-                { key: 'cizim', label: 'Çizim' }, 
-                { key: 'camSiparisi', label: 'Cam Sip.' }, 
-                { key: 'profilImalati', label: 'Profil İmalatı' }, 
-                { key: 'cizimAtolyeyeVerildi', label: 'Çizim Atölyeye' }, 
-                { key: 'camGeldi', label: 'Cam Geldi' } 
-              ].map((item, idx) => (
+              {[ { key: 'cizim', label: 'Çizim' }, { key: 'camSiparisi', label: 'Cam Sip.' }, { key: 'profilImalati', label: 'Profil İmalatı' }, { key: 'cizimAtolyeyeVerildi', label: 'Çizim Atölyeye' }, { key: 'camGeldi', label: 'Cam Geldi' } ].map((item, idx) => (
                 <button key={item.key} onClick={() => uretimAsamasiGuncelle(selectedJob.id, item.key)} className={`p-3 rounded-xl border-2 flex flex-col items-center gap-1 transition-all ${selectedJob.uretim?.[item.key] ? `${ASAMA_RENKLERI[idx]} border-transparent text-white shadow-md` : 'bg-white border-slate-100 text-slate-400'}`}>
                     <span className="text-[9px] font-black uppercase text-center leading-tight">{item.label}</span>
                     <div className="text-xs">{selectedJob.uretim?.[item.key] ? '✓' : '○'}</div>
                 </button>
               ))}
-
-              {aktifSekme === 'uretim' && [ 
-                { key: 'sonImalat', label: 'Son İmalat' }, 
-                { key: 'teslim', label: 'Teslim' } 
-              ].map((item, idx) => (
+              {aktifSekme === 'uretim' && [ { key: 'sonImalat', label: 'Son İmalat' }, { key: 'teslim', label: 'Teslim' } ].map((item, idx) => (
                 <button key={item.key} onClick={() => uretimAsamasiGuncelle(selectedJob.id, item.key)} className={`p-3 rounded-xl border-2 flex flex-col items-center gap-1 transition-all ${selectedJob.uretim?.[item.key] ? `${ASAMA_RENKLERI[idx+5]} border-transparent text-white shadow-md` : 'bg-white border-slate-100 text-slate-400'}`}>
                     <span className="text-[9px] font-black uppercase text-center leading-tight">{item.label}</span>
                     <div className="text-xs">{selectedJob.uretim?.[item.key] ? '✓' : '○'}</div>
