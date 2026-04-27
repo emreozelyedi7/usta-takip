@@ -125,11 +125,9 @@ export default function Home() {
     if (!job) return;
     const guncelUretim = { ...job.uretim, [asama]: !job.uretim?.[asama] };
     
-    // ZAMANLAYICI BAŞLAT (Çizim tiklendiğinde)
     if (asama === 'cizim' && guncelUretim.cizim === true && !guncelUretim.cizimTarihi) {
         guncelUretim.cizimTarihi = new Date().toISOString();
     }
-    // TESLİM TARİHİ KAYDET (Teslim tiklendiğinde)
     if (asama === 'teslim' && guncelUretim.teslim === true) {
         guncelUretim.teslimatBitisTarihi = new Date().toISOString();
     } else if (asama === 'teslim' && guncelUretim.teslim === false) {
@@ -233,7 +231,12 @@ export default function Home() {
           return (
             <div key={t.id} className={`p-3 rounded-2xl shadow-sm border active:scale-[0.98] transition-all relative overflow-hidden ${bittiMi ? 'bg-emerald-50 border-emerald-200' : (aktifSekme!=='teklifler'&&zaman?zaman.renkler.kart:'bg-white border-slate-100')}`}>
                 
-                {varHata && !bittiMi && <div className="bg-red-600 text-white text-[9px] font-black uppercase px-2 py-1 text-center animate-pulse tracking-widest mb-2 rounded-lg">⚠️ HATA: {t.uretim.hata}</div>}
+                {/* HATA ROZETİ: BİTSE BİLE GÖRÜNECEK, SADECE ÜRETİM SEKMESİNDE */}
+                {varHata && aktifSekme === 'uretim' && (
+                  <div className="bg-red-600 text-white text-[9px] font-black uppercase px-2 py-1 text-center animate-pulse tracking-widest mb-2 rounded-lg">
+                    ⚠️ HATA: {t.uretim.hata}
+                  </div>
+                )}
 
                 <div onClick={() => aktifSekme !== 'teklifler' && setSelectedJob(t)}>
                     <div className="flex justify-between items-start mb-1.5">
@@ -320,7 +323,21 @@ export default function Home() {
               {SIPARIS_ASAMALARI.map((item, idx) => (<button key={item} onClick={() => uretimAsamasiGuncelle(selectedJob.id, item)} className={`p-2.5 rounded-xl border-2 flex flex-col items-center gap-0.5 transition-all ${selectedJob.uretim?.[item] ? `${ASAMA_RENKLERI[idx]} border-transparent text-white shadow-md` : 'bg-white border-slate-100 text-slate-400'}`}><span className="text-[9px] font-black uppercase text-center leading-tight">{item==='cizim'?'Çizim':item==='camSiparisi'?'Cam Sip.':item==='profilImalati'?'Profil İmalatı':item==='cizimAtolyeyeVerildi'?'Atölyeye Verildi':'Cam Geldi'}</span><div className="text-xs">{selectedJob.uretim?.[item] ? '✓' : '○'}</div></button>))}
               {aktifSekme === 'uretim' && URETIM_ASAMALARI.map((item, idx) => (<button key={item} onClick={() => uretimAsamasiGuncelle(selectedJob.id, item)} className={`p-2.5 rounded-xl border-2 flex flex-col items-center gap-0.5 transition-all ${selectedJob.uretim?.[item] ? `${ASAMA_RENKLERI[idx+5]} border-transparent text-white shadow-md` : 'bg-white border-slate-100 text-slate-400'}`}><span className="text-[9px] font-black uppercase text-center leading-tight">{item==='sonImalat'?'Son İmalat':'Teslim'}</span><div className="text-xs">{selectedJob.uretim?.[item] ? '✓' : '○'}</div></button>))}
             </div>
-            <div className="mt-2 p-3 bg-red-50 rounded-xl border border-red-100 flex items-center gap-2"><span className="text-[10px] font-black text-red-700 uppercase">⚠️ HATA BİLDİR:</span><select value={selectedJob.uretim?.hata || 'Yok'} onChange={(e) => uretimHataGuncelle(selectedJob.id, e.target.value)} className="flex-1 bg-white text-red-700 text-[10px] font-bold py-1.5 px-2 rounded-lg border border-red-200 outline-none">{HATA_TURLERI.map(hata => <option key={hata} value={hata}>{hata}</option>)}</select></div>
+
+            {/* HATA BİLDİRİM MENÜSÜ - SADECE ÜRETİM SEKMESİNDE */}
+            {aktifSekme === 'uretim' && (
+              <div className="mt-2 p-3 bg-red-50 rounded-xl border border-red-100 flex items-center gap-2">
+                <span className="text-[10px] font-black text-red-700 uppercase whitespace-nowrap">⚠️ HATA BİLDİR:</span>
+                <select 
+                    value={selectedJob.uretim?.hata || 'Yok'} 
+                    onChange={(e) => uretimHataGuncelle(selectedJob.id, e.target.value)}
+                    className="flex-1 bg-white text-red-700 text-[10px] font-bold py-1.5 px-2 rounded-lg border border-red-200 outline-none"
+                >
+                    {HATA_TURLERI.map(hata => <option key={hata} value={hata}>{hata}</option>)}
+                </select>
+              </div>
+            )}
+
             <button onClick={() => setSelectedJob(null)} className="w-full bg-slate-900 text-white p-4 rounded-xl font-black text-sm uppercase mt-1">KAPAT</button>
           </div>
         </div>
