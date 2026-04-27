@@ -1,26 +1,18 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Sipariş ve Üretim Aşamaları
 const SIPARIS_ASAMALARI = ['cizim', 'camSiparisi', 'profilImalati', 'cizimAtolyeyeVerildi', 'camGeldi'];
 const URETIM_ASAMALARI = ['sonImalat', 'teslim'];
 const TUM_ASAMALAR = [...SIPARIS_ASAMALARI, ...URETIM_ASAMALARI];
 
-// Sarıdan yeşile giden renk paleti
 const ASAMA_RENKLERI = [
-  'bg-amber-400',   // 1. Çizim
-  'bg-yellow-400',  // 2. Cam Siparişi
-  'bg-lime-400',    // 3. Profil İmalatı
-  'bg-green-400',   // 4. Çizim Atölyeye
-  'bg-emerald-400', // 5. Cam Geldi
-  'bg-emerald-500', // 6. Son İmalat
-  'bg-green-600'    // 7. Teslim
+  'bg-amber-400', 'bg-yellow-400', 'bg-lime-400', 'bg-green-400', 'bg-emerald-400', 'bg-emerald-500', 'bg-green-600'
 ];
 
 export default function Home() {
@@ -39,7 +31,10 @@ export default function Home() {
   const aylar = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
   const yillar = [2025, 2026, 2027];
 
-  const [yeniIs, setYeniIs] = useState({ musteri: "", isModeli: "Cam Balkon", ilce: "", fiyat: "", kaynak: "Instagram", aciklama: "" });
+  // Adet verisi eklendi (Varsayılan 1)
+  const [yeniIs, setYeniIs] = useState({ musteri: "", isModeli: "Cam Balkon", adet: "1", ilce: "", fiyat: "", kaynak: "Instagram", aciklama: "" });
+
+  const gunListesiRef = useRef<HTMLDivElement>(null);
 
   const verileriGetir = useCallback(async () => {
     setYukleniyor(true);
@@ -61,6 +56,16 @@ export default function Home() {
     verileriGetir();
   }, [verileriGetir]);
 
+  // TARİH ŞERİDİ OTOMATİK ODAKLANMA (AUTO-SCROLL)
+  useEffect(() => {
+    if (gunListesiRef.current && aktifSekme === 'teklifler') {
+      const selectedButton = gunListesiRef.current.querySelector(`[data-day="${seciliGun}"]`);
+      if (selectedButton) {
+        selectedButton.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+      }
+    }
+  }, [seciliGun, seciliAy, aktifSekme]);
+
   const isSiparisTamam = (job: any) => {
     const u = job.uretim || {};
     return SIPARIS_ASAMALARI.every(asama => u[asama] === true);
@@ -77,21 +82,21 @@ export default function Home() {
     const { error } = await supabase.from('teklifler').insert([{ 
         musteri: yeniIs.musteri,
         is_modeli: yeniIs.isModeli,
+        adet: Number(yeniIs.adet) || 1, // Veritabanına Adet gönderiliyor
         ilce: yeniIs.ilce,
         fiyat: yeniIs.fiyat + " ₺",
         kaynak: yeniIs.kaynak,
         aciklama: yeniIs.aciklama,
         is_tarihi: formatliTarih, 
         durum: 'beklemede', 
-        uretim: { 
-          cizim: false, camSiparisi: false, profilImalati: false, cizimAtolyeyeVerildi: false, camGeldi: false, 
-          sonImalat: false, teslim: false, montajTipi: 'Montajlı' 
-        } 
+        uretim: { cizim: false, camSiparisi: false, profilImalati: false, cizimAtolyeyeVerildi: false, camGeldi: false, sonImalat: false, teslim: false, montajTipi: 'Montajlı' } 
     }]);
     if (!error) { 
         verileriGetir(); 
         setIsModalOpen(false); 
-        setYeniIs({ musteri: "", isModeli: "Cam Balkon", ilce: "", fiyat: "", kaynak: "Instagram", aciklama: "" }); 
+        setYeniIs({ musteri: "", isModeli: "Cam Balkon", adet: "1", ilce: "", fiyat: "", kaynak: "Instagram", aciklama: "" }); 
+    } else {
+        alert("Kayıt Hatası! Supabase'de 'adet' kolonunu açtığından emin ol.");
     }
   };
 
@@ -187,9 +192,16 @@ export default function Home() {
                 {aylar.map((a, i) => <option key={i} value={i}>{a}</option>)}
               </select>
             </div>
-            <div className="flex overflow-x-auto gap-1.5 pb-1" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+            
+            {/* GÜN SEÇİCİ (REF EKLENDİ) */}
+            <div ref={gunListesiRef} className="flex overflow-x-auto gap-1.5 pb-1" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
               {Array.from({ length: new Date(seciliYil, seciliAy + 1, 0).getDate() }, (_, i) => i + 1).map(gun => (
-                <button key={gun} onClick={() => setSeciliGun(gun)} className={`flex-shrink-0 w-8 h-10 rounded-lg flex flex-col items-center justify-center transition-all ${seciliGun === gun ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-50 text-slate-400'}`}>
+                <button 
+                  key={gun} 
+                  data-day={gun}
+                  onClick={() => setSeciliGun(gun)} 
+                  className={`flex-shrink-0 w-8 h-10 rounded-lg flex flex-col items-center justify-center transition-all ${seciliGun === gun ? 'bg-blue-600 text-white shadow-md scale-105' : 'bg-slate-50 text-slate-400'}`}
+                >
                   <span className="text-[11px] font-black">{gun}</span>
                 </button>
               ))}
@@ -202,28 +214,30 @@ export default function Home() {
       <div className="p-3 space-y-3 flex-1">
         {gosterilecekTeklifler.map(t => {
           const bittiMi = isTamamenBitti(t);
-          
-          // Sekmeye göre gösterilecek aşama listesi belirleniyor (5 kutu veya 7 kutu)
           const gosterilenAsamalar = aktifSekme === 'siparisler' ? SIPARIS_ASAMALARI : TUM_ASAMALAR;
 
           return (
             <div key={t.id} className={`p-3.5 rounded-2xl shadow-sm border active:scale-[0.98] transition-all ${bittiMi ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-slate-100'}`}>
-                {/* Tıklanabilir Üst Alan */}
+                
                 <div onClick={() => aktifSekme !== 'teklifler' && setSelectedJob(t)}>
-                    <div className="flex justify-between items-start mb-1">
+                    <div className="flex justify-between items-start mb-2">
                         <div className="flex-1 pr-2">
                             <h2 className="font-bold text-base leading-tight text-slate-800">{t.musteri}</h2>
-                            <div className="flex items-center gap-2 mt-0.5">
-                                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">{t.is_modeli} — {t.ilce}</p>
+                            
+                            {/* MODEL VE ADET VURGULU GÖSTERİMİ */}
+                            <div className="flex items-center flex-wrap gap-1.5 mt-1.5">
+                                <span className="text-[10px] bg-blue-50 text-blue-700 px-2 py-1 rounded-md font-black uppercase tracking-wider border border-blue-100 shadow-sm">
+                                    {t.is_modeli} • {t.adet || 1} ADET
+                                </span>
+                                <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider pl-1 border-l-2 border-slate-200">{t.ilce}</span>
                             </div>
                         </div>
                         <div className="text-right text-sm font-black text-slate-900">{t.fiyat}</div>
                     </div>
                 </div>
 
-                {/* AÇIKLAMA (NOTLAR) ARTIK TÜM SEKMELERDE GÖZÜKÜYOR */}
                 {t.aciklama && (
-                  <div className="mt-1.5 mb-1.5 bg-slate-50 p-2 rounded-lg border-l-4 border-slate-200">
+                  <div className="mt-2 mb-2 bg-slate-50 p-2 rounded-lg border-l-4 border-slate-200">
                     <p className="text-[10px] text-slate-500 font-medium italic leading-snug line-clamp-2">{t.aciklama}</p>
                   </div>
                 )}
@@ -234,7 +248,6 @@ export default function Home() {
                   </select>
                 ) : (
                   <>
-                    {/* SİPARİŞ & ÜRETİM ORTAK ALANI: MONTAJ TİPİ VE PARÇALI BAR */}
                     <div className="mt-3 flex gap-3 items-center">
                         <select 
                             value={t.uretim?.montajTipi || 'Montajlı'} 
@@ -248,7 +261,6 @@ export default function Home() {
                         {bittiMi ? (
                             <div className="flex-1 bg-emerald-500 text-white text-[10px] font-black uppercase text-center py-1.5 rounded-md shadow-sm tracking-widest">İŞ TESLİM EDİLDİ 🏁</div>
                         ) : (
-                            // YENİ TASARIM: YÜZDE YERİNE PARÇALI RENKLİ BAR (SEGMENTED BAR)
                             <div className="flex-1 flex gap-1 h-2.5">
                                 {gosterilenAsamalar.map((asama, i) => {
                                     const isCompleted = t.uretim?.[asama];
@@ -285,26 +297,31 @@ export default function Home() {
         </button>
       </div>
 
-      {/* YENİ KAYIT MODALI */}
+      {/* YENİ KAYIT MODALI (ADET ALANI EKLENDİ) */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-sm p-6 rounded-[2rem] shadow-2xl animate-in zoom-in-95 duration-200">
             <h3 className="text-lg font-black text-slate-900 mb-4 text-center uppercase tracking-tighter">YENİ İŞ EKLE</h3>
             <form onSubmit={isKaydet} className="space-y-2.5">
-              <input required className="w-full bg-slate-100 p-3 rounded-xl text-base font-bold outline-none border-none" placeholder="Müşteri Adı" onChange={(e) => setYeniIs({...yeniIs, musteri: e.target.value})} />
-              <div className="grid grid-cols-2 gap-2">
-                <select className="bg-slate-100 p-3 rounded-xl text-base font-bold border-none outline-none" onChange={(e) => setYeniIs({...yeniIs, isModeli: e.target.value})}>
+              <input required className="w-full bg-slate-100 p-3 rounded-xl text-base font-bold outline-none border-none" placeholder="Müşteri Adı" value={yeniIs.musteri} onChange={(e) => setYeniIs({...yeniIs, musteri: e.target.value})} />
+              
+              <div className="grid grid-cols-3 gap-2">
+                <select className="col-span-2 bg-slate-100 p-3 rounded-xl text-base font-bold border-none outline-none" value={yeniIs.isModeli} onChange={(e) => setYeniIs({...yeniIs, isModeli: e.target.value})}>
                     <option value="Cam Balkon">Cam Balkon</option><option value="Giyotin">Giyotin</option><option value="Sürme">Sürme</option><option value="Teras">Teras</option>
                 </select>
-                <select className="bg-slate-100 p-3 rounded-xl text-base font-bold border-none outline-none" onChange={(e) => setYeniIs({...yeniIs, kaynak: e.target.value})}>
+                <input required type="number" min="1" className="col-span-1 bg-slate-100 p-3 rounded-xl text-base font-bold outline-none text-center" placeholder="Adet" value={yeniIs.adet} onChange={(e) => setYeniIs({...yeniIs, adet: e.target.value})} />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <input required className="w-full bg-slate-100 p-3 rounded-xl text-base font-bold outline-none" placeholder="Fiyat" type="number" value={yeniIs.fiyat} onChange={(e) => setYeniIs({...yeniIs, fiyat: e.target.value})} />
+                <select className="bg-slate-100 p-3 rounded-xl text-base font-bold border-none outline-none" value={yeniIs.kaynak} onChange={(e) => setYeniIs({...yeniIs, kaynak: e.target.value})}>
                     <option value="Instagram">Instagram</option><option value="Referans">Referans</option><option value="Web">Web</option>
                 </select>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <input required className="w-full bg-slate-100 p-3 rounded-xl text-base font-bold outline-none" placeholder="Fiyat" type="number" onChange={(e) => setYeniIs({...yeniIs, fiyat: e.target.value})} />
-                <input required className="w-full bg-slate-100 p-3 rounded-xl text-base font-bold outline-none" placeholder="İlçe" onChange={(e) => setYeniIs({...yeniIs, ilce: e.target.value})} />
-              </div>
-              <textarea className="w-full bg-slate-100 p-3 rounded-xl text-base font-bold h-16 resize-none outline-none" placeholder="Notlar..." onChange={(e) => setYeniIs({...yeniIs, aciklama: e.target.value})}></textarea>
+              <input required className="w-full bg-slate-100 p-3 rounded-xl text-base font-bold outline-none" placeholder="İlçe" value={yeniIs.ilce} onChange={(e) => setYeniIs({...yeniIs, ilce: e.target.value})} />
+              
+              <textarea className="w-full bg-slate-100 p-3 rounded-xl text-base font-bold h-16 resize-none outline-none" placeholder="Notlar..." value={yeniIs.aciklama} onChange={(e) => setYeniIs({...yeniIs, aciklama: e.target.value})}></textarea>
+              
               <button type="submit" className="w-full bg-blue-600 text-white p-3.5 rounded-xl font-black text-sm uppercase shadow-xl mt-1 active:scale-95">İŞİ KAYDET</button>
               <button type="button" onClick={() => setIsModalOpen(false)} className="w-full text-slate-400 text-xs font-black uppercase py-2 text-center">İPTAL</button>
             </form>
@@ -319,16 +336,18 @@ export default function Home() {
             <div className="flex justify-between items-start">
                 <div>
                     <h2 className="text-xl font-black text-slate-900">{selectedJob.musteri}</h2>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{selectedJob.is_modeli}</p>
+                    <div className="flex items-center gap-1.5 mt-1">
+                        <span className="text-[10px] bg-blue-50 text-blue-700 px-2 py-0.5 rounded font-black uppercase border border-blue-100">
+                            {selectedJob.is_modeli} • {selectedJob.adet || 1} ADET
+                        </span>
+                    </div>
                 </div>
                 <button onClick={() => setSelectedJob(null)} className="text-slate-300 text-xl font-bold">✕</button>
             </div>
             
             <textarea value={selectedJob.aciklama || ''} onChange={(e) => aciklamaGuncelle(selectedJob.id, e.target.value)} className="w-full bg-slate-50 p-3 rounded-xl text-base font-medium h-20 border-none outline-none" placeholder="İş notları..." />
             
-            {/* AŞAMALAR */}
             <div className="grid grid-cols-2 gap-2 mb-2">
-              {/* İlk 5 Aşama Her Zaman Görünür */}
               {[ 
                 { key: 'cizim', label: 'Çizim' }, 
                 { key: 'camSiparisi', label: 'Cam Sip.' }, 
@@ -336,14 +355,12 @@ export default function Home() {
                 { key: 'cizimAtolyeyeVerildi', label: 'Çizim Atölyeye' }, 
                 { key: 'camGeldi', label: 'Cam Geldi' } 
               ].map((item, idx) => (
-                // Detay panelinde buton renklerini de yeni palete uydurabiliriz ya da genel yeşil bırakabiliriz. Şık durması için dinamik rengini verdim.
                 <button key={item.key} onClick={() => uretimAsamasiGuncelle(selectedJob.id, item.key)} className={`p-3 rounded-xl border-2 flex flex-col items-center gap-1 transition-all ${selectedJob.uretim?.[item.key] ? `${ASAMA_RENKLERI[idx]} border-transparent text-white shadow-md` : 'bg-white border-slate-100 text-slate-400'}`}>
                     <span className="text-[9px] font-black uppercase text-center leading-tight">{item.label}</span>
                     <div className="text-xs">{selectedJob.uretim?.[item.key] ? '✓' : '○'}</div>
                 </button>
               ))}
 
-              {/* Son 2 Aşama Sadece Üretim Sekmesinde Görünür */}
               {aktifSekme === 'uretim' && [ 
                 { key: 'sonImalat', label: 'Son İmalat' }, 
                 { key: 'teslim', label: 'Teslim' } 
