@@ -114,7 +114,6 @@ export default function Home() {
     e.preventDefault();
     const formatliTarih = `${seciliYil}-${String(seciliAy + 1).padStart(2, '0')}-${String(seciliGun).padStart(2, '0')}`;
     
-    // Supabase Insert İşlemi
     const { error } = await supabase.from('teklifler').insert([{ 
         musteri: yeniIs.musteri, 
         is_modeli: yeniIs.isModeli, 
@@ -129,7 +128,6 @@ export default function Home() {
     }]);
 
     if (error) { 
-        // HATA EKRANA YAZDIRILIYOR (Neden kaydetmediğini buradan göreceğiz)
         alert("KAYIT HATASI: " + error.message);
     } else {
         verileriGetir(); 
@@ -183,18 +181,10 @@ export default function Home() {
     verileriGetir();
   };
 
-  const formatTarihKisa = (tarihStr: string) => {
-    if(!tarihStr) return "";
-    const date = new Date(tarihStr);
-    return `${date.getDate()} ${aylar[date.getMonth()]}`;
-  };
-
-  // Sekme Filtreleme
   let gosterilecekTeklifler = teklifler;
   if (aktifSekme === 'siparisler') gosterilecekTeklifler = teklifler.filter(t => t.durum === 'onaylandi' && !isSiparisTamam(t)); 
   else if (aktifSekme === 'uretim') gosterilecekTeklifler = teklifler.filter(t => t.durum === 'onaylandi' && isSiparisTamam(t)); 
 
-  // Raporlar Hesaplamaları
   let toplamVerilenGenel = 0;
   let toplamOnaylananGenel = 0;
 
@@ -230,7 +220,7 @@ export default function Home() {
       {/* İÇERİK ALANI */}
       <div className="p-3 space-y-3 flex-1">
         
-        {/* ================= RAPORLAR EKRANI (EXCEL GÖRÜNÜMÜ) ================= */}
+        {/* ================= RAPORLAR EKRANI ================= */}
         {aktifSekme === 'raporlar' ? (
           <div className="space-y-4">
             <div className="bg-white border border-slate-300 shadow-sm overflow-x-auto">
@@ -246,8 +236,6 @@ export default function Home() {
                 <tbody>
                   {KAYNAKLAR.map(kaynak => {
                       const kTeklifler = teklifler.filter(t => t.kaynak === kaynak);
-                      
-                      // Hiç teklif yoksa bile tabloda Excel'deki gibi "0" olarak görünsün
                       const vTutar = kTeklifler.reduce((acc, t) => acc + fiyatiSayiyaCevir(t.fiyat), 0);
                       const oTutar = kTeklifler.filter(t => t.durum === 'onaylandi').reduce((acc, t) => acc + fiyatiSayiyaCevir(t.fiyat), 0);
                       
@@ -255,19 +243,14 @@ export default function Home() {
                       toplamOnaylananGenel += oTutar;
 
                       let yuzdeStr = "#DIV/0!";
-                      let bgColor = "bg-amber-500 text-white"; // Varsayılan Div/0 rengi (Turuncu/Sarı)
+                      let bgColor = "bg-amber-500 text-white"; 
 
                       if (vTutar > 0) {
                           const yuzdeNum = (oTutar / vTutar) * 100;
                           yuzdeStr = `%${yuzdeNum.toFixed(2)}`;
-                          
-                          if (yuzdeNum === 100) {
-                              bgColor = "bg-teal-200 text-teal-900"; // Tamamı onaylı (Yeşilimsi)
-                          } else if (yuzdeNum > 30) {
-                              bgColor = "bg-amber-500 text-white"; // 30-99 arası Turuncu
-                          } else {
-                              bgColor = "bg-red-600 text-white"; // 30 Altı Kırmızı
-                          }
+                          if (yuzdeNum === 100) bgColor = "bg-teal-200 text-teal-900"; 
+                          else if (yuzdeNum > 30) bgColor = "bg-amber-500 text-white"; 
+                          else bgColor = "bg-red-600 text-white"; 
                       }
 
                       return (
@@ -279,8 +262,6 @@ export default function Home() {
                           </tr>
                       );
                   })}
-                  
-                  {/* TOPLAM SATIRI */}
                   <tr className="border-t-2 border-slate-400 bg-slate-50 text-slate-900">
                       <td className="p-2 text-left border-r border-slate-200 uppercase">GENEL TOPLAM</td>
                       <td className="p-2 text-right border-r border-slate-200">{toplamVerilenGenel.toLocaleString()}</td>
@@ -300,7 +281,8 @@ export default function Home() {
             const zaman = getZamanDurumu(t);
             return (
               <div key={t.id} className={`p-4 rounded-[1.5rem] shadow-sm border active:scale-[0.98] transition-all relative overflow-hidden ${bittiMi ? 'bg-emerald-50 border-emerald-200' : (aktifSekme!=='teklifler'&&zaman?zaman.renkler.kart:'bg-white border-slate-100')}`}>
-                  <div onClick={() => aktifSekme !== 'teklifler' && setSelectedJob(t)}>
+                  {/* TIKLAMA OLAYI BURADA */}
+                  <div onClick={() => aktifSekme !== 'teklifler' && setSelectedJob(t)} className="cursor-pointer">
                       <div className="flex justify-between items-start mb-2">
                           <div className="flex-1">
                               <h2 className="font-bold text-[16px] text-slate-900 leading-none">{t.musteri}</h2>
@@ -341,7 +323,7 @@ export default function Home() {
         ))}
       </div>
 
-      {/* YENİ KAYIT MODALI (HATALAR İÇİN ALERT EKLENDİ) */}
+      {/* YENİ KAYIT MODALI */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-sm p-6 rounded-[2rem] shadow-2xl animate-in zoom-in-95 duration-200">
@@ -369,6 +351,55 @@ export default function Home() {
         </div>
       )}
 
+      {/* İŞ DETAY VE TİKLEME PANELİ (Siparişler ve Üretim için) */}
+      {selectedJob && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-end justify-center">
+          <div className="bg-white w-full max-w-md p-6 rounded-t-[2rem] shadow-2xl flex flex-col gap-3 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-start">
+                <div>
+                    <h2 className="text-xl font-black text-slate-900">{selectedJob.musteri}</h2>
+                    <div className="flex items-center gap-1.5 mt-1.5">
+                        <span className="text-[9px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-black border border-slate-200">ONAY: {selectedJob.is_tarihi.split('-').reverse().slice(0,2).join('/')}</span>
+                        <span className="text-[9px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded font-black border border-blue-100">{selectedJob.is_modeli} • {selectedJob.adet || 1} ADET</span>
+                    </div>
+                </div>
+                <button onClick={() => setSelectedJob(null)} className="text-slate-300 text-xl font-bold bg-slate-50 w-8 h-8 rounded-full flex items-center justify-center">✕</button>
+            </div>
+            
+            <textarea value={selectedJob.aciklama || ''} onChange={(e) => aciklamaGuncelle(selectedJob.id, e.target.value)} className="w-full bg-slate-50 p-3 rounded-xl text-base font-medium h-16 border border-slate-100 outline-none" placeholder="İş notları..." />
+            
+            <div className="grid grid-cols-2 gap-2">
+              {SIPARIS_ASAMALARI.map((item, idx) => (
+                <button key={item} onClick={() => uretimAsamasiGuncelle(selectedJob.id, item)} className={`p-2.5 rounded-xl border-2 flex flex-col items-center gap-0.5 transition-all ${selectedJob.uretim?.[item] ? `${ASAMA_RENKLERI[idx]} border-transparent text-white shadow-md` : 'bg-white border-slate-100 text-slate-400'}`}>
+                    <span className="text-[9px] font-black uppercase text-center leading-tight">
+                        {item==='cizim'?'Çizim':item==='camSiparisi'?'Cam Sip.':item==='profilImalati'?'Profil İmalatı':item==='cizimAtolyeyeVerildi'?'Atölyeye Verildi':'Cam Geldi'}
+                    </span>
+                    <div className="text-xs">{selectedJob.uretim?.[item] ? '✓' : '○'}</div>
+                </button>
+              ))}
+
+              {aktifSekme === 'uretim' && URETIM_ASAMALARI.map((item, idx) => (
+                <button key={item} onClick={() => uretimAsamasiGuncelle(selectedJob.id, item)} className={`p-2.5 rounded-xl border-2 flex flex-col items-center gap-0.5 transition-all ${selectedJob.uretim?.[item] ? `${ASAMA_RENKLERI[idx+5]} border-transparent text-white shadow-md` : 'bg-white border-slate-100 text-slate-400'}`}>
+                    <span className="text-[9px] font-black uppercase text-center leading-tight">{item==='sonImalat'?'Son İmalat':'Teslim'}</span>
+                    <div className="text-xs">{selectedJob.uretim?.[item] ? '✓' : '○'}</div>
+                </button>
+              ))}
+            </div>
+
+            {aktifSekme === 'uretim' && (
+              <div className="mt-2 p-3 bg-red-50 rounded-xl border border-red-100 flex items-center gap-2">
+                <span className="text-[10px] font-black text-red-700 uppercase whitespace-nowrap">⚠️ HATA BİLDİR:</span>
+                <select value={selectedJob.uretim?.hata || 'Yok'} onChange={(e) => uretimHataGuncelle(selectedJob.id, e.target.value)} className="flex-1 bg-white text-red-700 text-[10px] font-bold py-1.5 px-2 rounded-lg border border-red-200 outline-none">
+                    {HATA_TURLERI.map(hata => <option key={hata} value={hata}>{hata}</option>)}
+                </select>
+              </div>
+            )}
+
+            <button onClick={() => setSelectedJob(null)} className="w-full bg-slate-900 text-white p-4 rounded-xl font-black text-sm uppercase mt-1">KAPAT</button>
+          </div>
+        </div>
+      )}
+
       {/* SİDEBAR EKRANI */}
       {isSidebarOpen && (
         <>
@@ -390,7 +421,6 @@ export default function Home() {
           </div>
         </>
       )}
-
     </div>
   );
 }
