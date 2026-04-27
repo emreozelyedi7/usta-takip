@@ -35,9 +35,24 @@ export default function Home() {
 
   const gunListesiRef = useRef<HTMLDivElement>(null);
   
-  // SWIPE EKRAN KONTROLLERİ İÇİN
+  // SWIPE KONTROLLERİ
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  const touchStartRef = useRef<number | null>(null); // Native event için referans
+
+  // TELEFONUN GERİ GİTME (SWIPE-BACK) HAREKETİNİ KESİN OLARAK ENGELLEYEN SİSTEM
+  useEffect(() => {
+    const preventSwipeBack = (e: TouchEvent) => {
+      // Eğer dokunuş ekranın sol kenarından (ilk 40px) başladıysa, tarayıcının geri gitmesini tamamen durdur.
+      if (touchStartRef.current !== null && touchStartRef.current < 40) {
+        e.preventDefault(); 
+      }
+    };
+    
+    // Tarayıcıya bu kuralı 'pasif olmayan' şekilde zorla kabul ettiriyoruz
+    document.addEventListener('touchmove', preventSwipeBack, { passive: false });
+    return () => document.removeEventListener('touchmove', preventSwipeBack);
+  }, []);
 
   const verileriGetir = useCallback(async () => {
     setYukleniyor(true);
@@ -76,12 +91,10 @@ export default function Home() {
     return TUM_ASAMALAR.every(asama => u[asama] === true);
   };
 
-  // MONTAJ KALAN GÜN HESAPLAMA MANTIĞI
   const getKalanGun = (job: any) => {
     if (!job.uretim?.cizimTarihi) return null;
     const start = new Date(job.uretim.cizimTarihi);
     const now = new Date();
-    // Gecen gunu hesapla
     const diffTime = now.getTime() - start.getTime();
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
     return 25 - diffDays;
@@ -115,7 +128,6 @@ export default function Home() {
     
     const guncelUretim = { ...job.uretim, [asama]: !job.uretim?.[asama] };
     
-    // EĞER ÇİZİM İŞARETLENDİYSE VE TARİH YOKSA, SAYACI BAŞLAT
     if (asama === 'cizim' && guncelUretim.cizim === true && !guncelUretim.cizimTarihi) {
         guncelUretim.cizimTarihi = new Date().toISOString();
     }
@@ -148,10 +160,12 @@ export default function Home() {
     verileriGetir();
   };
 
-  // EKRANI KAYDIRMA ALGILAYICI (SWIPE TO OPEN SIDEBAR)
+  // EKRANI KAYDIRMA (SADECE BELİRGİN ÇEKİŞLERDE MENÜ AÇILACAK)
   const onTouchStart = (e: React.TouchEvent) => {
     setTouchEnd(null);
-    setTouchStart(e.targetTouches[0].clientX);
+    const clientX = e.targetTouches[0].clientX;
+    setTouchStart(clientX);
+    touchStartRef.current = clientX; 
   };
 
   const onTouchMove = (e: React.TouchEvent) => {
@@ -159,9 +173,15 @@ export default function Home() {
   };
 
   const onTouchEnd = () => {
+    touchStartRef.current = null; // İşlem bitince sıfırla
     if (!touchStart || !touchEnd) return;
+    
     const distance = touchStart - touchEnd;
-    const isLeftSwipe = distance < -70; // Soldan sağa doğru 70px çekilirse
+    
+    // Önceden -70'ti. Şimdi -120 yaptık. Yani menünün açılması için 
+    // parmağını ekranda bayağı bir kaydırman gerekecek (yanlışlıkla açılmaz).
+    const isLeftSwipe = distance < -120; 
+    
     if (isLeftSwipe && !isModalOpen && !selectedJob) {
       setIsSidebarOpen(true);
     }
@@ -181,18 +201,14 @@ export default function Home() {
   };
 
   return (
-    // EKRAN KAYMASINI VE GERİ GİTMEYİ ENGELLEYEN TOUCH EVENTLERİ VE CSS EKLENDİ
     <div 
       className="max-w-xl mx-auto bg-slate-50 min-h-screen text-slate-900 overflow-x-hidden flex flex-col pb-28 relative"
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
-      style={{ overscrollBehaviorX: 'none' }} 
+      style={{ touchAction: 'pan-y' }} // Tarayıcıya yatay hareketleri bana bırak dedik
     >
-      {/* TARAYICININ GERİ GİTME JESTİNİ KESİNLİKLE KAPATAN GLOBAL CSS */}
-      <style dangerouslySetInnerHTML={{__html: `
-        body, html { overscroll-behavior-x: none; touch-action: pan-y; }
-      `}} />
+      <style dangerouslySetInnerHTML={{__html: `body, html { overscroll-behavior-x: none; }`}} />
 
       {/* SİDEBAR */}
       {isSidebarOpen && (
@@ -268,7 +284,6 @@ export default function Home() {
                 (isKritik && aktifSekme !== 'teklifler') ? 'bg-rose-50 border-rose-300' : 'bg-white border-slate-100'
             }`}>
                 
-                {/* KRİTİK GÜN UYARISI (10 Gün ve Altı) */}
                 {isKritik && !bittiMi && aktifSekme !== 'teklifler' && (
                   <div className="absolute top-0 right-0 bg-red-600 text-white text-[9px] font-black uppercase px-3 py-1 rounded-bl-xl shadow-sm animate-pulse tracking-widest z-10">
                     🚨 Montaja {kalanGun <= 0 ? 'SÜRE DOLDU' : `${kalanGun} GÜN KALDI!`}
@@ -290,7 +305,6 @@ export default function Home() {
                     </div>
                 </div>
 
-                {/* NORMAL SÜRE GÖSTERİMİ (> 10 Gün) */}
                 {!isKritik && kalanGun !== null && !bittiMi && aktifSekme !== 'teklifler' && (
                   <div className="mb-2 bg-slate-100/50 text-slate-500 text-[9px] font-black uppercase px-2 py-1.5 rounded-lg border border-slate-100 inline-block tracking-widest">
                     ⏳ Teslime: {kalanGun} Gün
@@ -407,13 +421,23 @@ export default function Home() {
             <textarea value={selectedJob.aciklama || ''} onChange={(e) => aciklamaGuncelle(selectedJob.id, e.target.value)} className="w-full bg-slate-50 p-3 rounded-xl text-base font-medium h-20 border-none outline-none" placeholder="İş notları..." />
             
             <div className="grid grid-cols-2 gap-2 mb-2">
-              {[ { key: 'cizim', label: 'Çizim' }, { key: 'camSiparisi', label: 'Cam Sip.' }, { key: 'profilImalati', label: 'Profil İmalatı' }, { key: 'cizimAtolyeyeVerildi', label: 'Çizim Atölyeye' }, { key: 'camGeldi', label: 'Cam Geldi' } ].map((item, idx) => (
+              {[ 
+                { key: 'cizim', label: 'Çizim' }, 
+                { key: 'camSiparisi', label: 'Cam Sip.' }, 
+                { key: 'profilImalati', label: 'Profil İmalatı' }, 
+                { key: 'cizimAtolyeyeVerildi', label: 'Çizim Atölyeye' }, 
+                { key: 'camGeldi', label: 'Cam Geldi' } 
+              ].map((item, idx) => (
                 <button key={item.key} onClick={() => uretimAsamasiGuncelle(selectedJob.id, item.key)} className={`p-3 rounded-xl border-2 flex flex-col items-center gap-1 transition-all ${selectedJob.uretim?.[item.key] ? `${ASAMA_RENKLERI[idx]} border-transparent text-white shadow-md` : 'bg-white border-slate-100 text-slate-400'}`}>
                     <span className="text-[9px] font-black uppercase text-center leading-tight">{item.label}</span>
                     <div className="text-xs">{selectedJob.uretim?.[item.key] ? '✓' : '○'}</div>
                 </button>
               ))}
-              {aktifSekme === 'uretim' && [ { key: 'sonImalat', label: 'Son İmalat' }, { key: 'teslim', label: 'Teslim' } ].map((item, idx) => (
+
+              {aktifSekme === 'uretim' && [ 
+                { key: 'sonImalat', label: 'Son İmalat' }, 
+                { key: 'teslim', label: 'Teslim' } 
+              ].map((item, idx) => (
                 <button key={item.key} onClick={() => uretimAsamasiGuncelle(selectedJob.id, item.key)} className={`p-3 rounded-xl border-2 flex flex-col items-center gap-1 transition-all ${selectedJob.uretim?.[item.key] ? `${ASAMA_RENKLERI[idx+5]} border-transparent text-white shadow-md` : 'bg-white border-slate-100 text-slate-400'}`}>
                     <span className="text-[9px] font-black uppercase text-center leading-tight">{item.label}</span>
                     <div className="text-xs">{selectedJob.uretim?.[item.key] ? '✓' : '○'}</div>
